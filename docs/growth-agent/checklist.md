@@ -84,7 +84,7 @@ CI) are listed at the end.
 - [ ] `src/agent/mcp-launcher.ts` — framework only
 - [ ] `src/messenger/adapter.ts`, `slack.ts` (add `eventTs` field), `split.ts`, `factory.ts`
 - [ ] `src/security/auth.ts`, `prompt-guard.ts`
-- [ ] `src/utils/circuit-breaker.ts`, `rate-limiter.ts`, `logger.ts`, `retry.ts`, `escape.ts`, `errors.ts`
+- [x] `src/utils/circuit-breaker.ts`, `rate-limiter.ts`, `logger.ts` (ADARIA_HOME aware, `adaria-` prefix), `retry.ts`, `escape.ts`, `errors.ts` (`AdariaError` + `withDefaults` helper for exactOptional), `parse-json.ts` (growth-agent port, bracket-matching) + 7 test files (68 tests passing)
 - [ ] `src/cli/daemon.ts`, `start.ts`, `stop.ts`, `status.ts`, `logs.ts`, `init.ts`, `doctor.ts`
 
 ### Adapt + wire
