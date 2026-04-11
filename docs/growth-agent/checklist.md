@@ -82,7 +82,7 @@ CI) are listed at the end.
 - [x] `src/agent/audit.ts` — path change to `~/.adaria/audit.jsonl`
 - [x] `src/agent/mcp-manager.ts` — framework, no tools registered yet (rewritten as skeleton; see `porting-matrix.md`)
 - [x] `src/agent/mcp-launcher.ts` — framework only (rewritten as skeleton; see `porting-matrix.md`)
-- [ ] `src/messenger/adapter.ts`, `slack.ts` (add `eventTs` field), `split.ts`, `factory.ts`
+- [x] `src/messenger/adapter.ts`, `slack.ts` (add `eventTs` field), `split.ts`, `factory.ts`
 - [x] `src/security/auth.ts` (allowlist check, Slack-only), `prompt-guard.ts` (XML tag wrappers, wrapMemory intentionally omitted)
 - [x] `src/config/schema.ts` (zod, Slack + Claude + security + safety + agent), `store.ts` (YAML + chmod tightening for 0700/0600), `keychain.ts` (macOS security CLI, `adaria-ai:` prefix)
 - [x] `src/messenger/adapter.ts` (interface only — concrete SlackAdapter in M1d; `eventTs?: string` optional per M1c review H3)
