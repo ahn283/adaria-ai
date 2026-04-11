@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+
+# secrets & local config
+.env
+.env.*
+!.env.example
+
+# logs
+logs/
+*.log
+
+# database & runtime state
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+.adaria/
+
+# npm
+*.tgz
+
+# editor
+.DS_Store
+.vscode/
+.idea/
+*.swp

@@ -1,0 +1,61 @@
+{
+  "name": "adaria-ai",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Single-user marketing operations agent for the Adaria.ai app portfolio, running as a macOS launchd daemon with Slack interface",
+  "type": "module",
+  "bin": {
+    "adaria-ai": "./dist/index.js"
+  },
+  "files": [
+    "dist/",
+    "src/",
+    "prompts/",
+    "launchd/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint src/",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build && npm run lint && npm test"
+  },
+  "keywords": [
+    "marketing",
+    "aso",
+    "slack",
+    "claude",
+    "agent",
+    "macos"
+  ],
+  "author": "Woojin Ahn",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ahnwoojin/adaria-ai.git"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/inquirer": "^9.0.9",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25.6.0",
+    "eslint": "^9.39.4",
+    "typescript": "^6.0.2",
+    "typescript-eslint": "^8.58.1",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@slack/bolt": "^4.7.0",
+    "better-sqlite3": "^12.8.0",
+    "commander": "^14.0.3",
+    "inquirer": "^13.4.1",
+    "js-yaml": "^4.1.1"
+  }
+}
