@@ -80,8 +80,8 @@ CI) are listed at the end.
 - [x] `src/agent/conversation-summary.ts` — project fields dropped; secret masking added at entry points per M1 storage review MED #2 (+ 12 unit tests)
 - [x] `src/agent/safety.ts` — pilot-ai ApprovalManager base (growth-agent gates merged in M5); dropped shell-oriented `classifySafety` (no shell tool in adaria-ai); added `ApprovalGate` type + `shutdown()` + duplicate-taskId fail-fast per M1 safety review HIGH; 8 unit tests
 - [x] `src/agent/audit.ts` — path change to `~/.adaria/audit.jsonl` (+ 8 unit tests; `MEMORY_DIR`/`CONVERSATIONS_DIR` added to `ensureAdariaDir` 0700 set per M1 storage review MED #1)
-- [ ] `src/agent/mcp-manager.ts` — framework, no tools registered yet
-- [ ] `src/agent/mcp-launcher.ts` — framework only
+- [x] `src/agent/mcp-manager.ts` — framework, no tools registered yet. **Deviation:** written fresh as a ~180 LOC skeleton instead of 🟢 copy; pilot-ai's 472-LOC version is ~80% third-party-server install machinery that has no domain fit. `porting-matrix.md` updated. Split `McpToolDescriptor` (daemon metadata) from `McpToolImplementation` (tool-host handler) per M1 MCP review HIGH #1 to respect the process boundary. `buildMcpConfig()` returns `null` when empty so core.ts can skip `--mcp-config` entirely (mirrors pilot-ai's `getMcpConfigPathIfExists`). 14 unit tests.
+- [x] `src/agent/mcp-launcher.ts` — framework only. **Deviation:** 45 LOC fresh write; pilot-ai's 187-LOC version generates bash Keychain wrappers for npx'd npm servers. adaria-ai launches its in-process tool host with `process.execPath` directly. 6 unit tests.
 - [ ] `src/messenger/adapter.ts`, `slack.ts` (add `eventTs` field), `split.ts`, `factory.ts`
 - [x] `src/security/auth.ts` (allowlist check, Slack-only), `prompt-guard.ts` (XML tag wrappers, wrapMemory intentionally omitted)
 - [x] `src/config/schema.ts` (zod, Slack + Claude + security + safety + agent), `store.ts` (YAML + chmod tightening for 0700/0600), `keychain.ts` (macOS security CLI, `adaria-ai:` prefix)
