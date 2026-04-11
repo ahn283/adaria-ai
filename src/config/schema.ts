@@ -19,7 +19,12 @@ export const slackConfigSchema = z.object({
 });
 
 export const claudeConfigSchema = z.object({
-  mode: z.enum(["cli", "api"]).default("cli"),
+  /** M1 ships only the CLI runner. The schema intentionally refuses
+   *  `mode: 'api'` at load time rather than silently falling through to
+   *  CLI when the user expected an Anthropic SDK invocation (M1 claude
+   *  review HIGH #1). A later milestone will re-add `'api'` once the
+   *  fallback runner is ported. */
+  mode: z.literal("cli").default("cli"),
   cliBinary: z.string().default("claude"),
   apiKey: z.string().nullable().default(null),
   /** Default Claude CLI timeout in ms — adaria-ai defaults to 120s for

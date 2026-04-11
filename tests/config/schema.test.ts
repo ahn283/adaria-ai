@@ -45,13 +45,17 @@ describe("configSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("accepts api mode with non-null apiKey", () => {
-    const parsed = configSchema.parse({
+  it("rejects `claude.mode: 'api'` in M1 (only `cli` is implemented)", () => {
+    // M1 claude review HIGH #1: the schema used to accept `mode: 'api'`
+    // but the runner silently fell through to CLI, so any user who set
+    // it in config.yaml got baffling behavior. The schema now refuses
+    // 'api' at load time; a later milestone will reintroduce it when
+    // the Anthropic SDK fallback runner lands.
+    const result = configSchema.safeParse({
       ...BASE,
       claude: { mode: "api", apiKey: "sk-ant-xxx" },
     });
-    expect(parsed.claude.mode).toBe("api");
-    expect(parsed.claude.apiKey).toBe("sk-ant-xxx");
+    expect(result.success).toBe(false);
   });
 
   it("accepts briefingChannel when provided", () => {

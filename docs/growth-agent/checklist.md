@@ -10,14 +10,14 @@ CI) are listed at the end.
 
 ## Pre-M0 — prerequisites
 
-- [ ] Read all 5 planning docs in this directory
-- [ ] Confirm `/Users/ahnwoojin/Github/adaria-ai` exists and is empty
-- [ ] Confirm `/Users/ahnwoojin/Github/pilot-ai` is accessible for copying
-- [ ] Confirm `/Users/ahnwoojin/growth-agent` is accessible for porting
-- [ ] Commit growth-agent Phase 1 fix (silent-failure) and push — freeze from this point forward
-- [ ] Verify `npm view adaria-ai` still returns 404 (not taken)
-- [ ] Verify Node 20+ installed (`node --version`)
-- [ ] Verify `claude` CLI installed and authed (`claude -p "hello"` works)
+- [x] Read all 5 planning docs in this directory
+- [x] Confirm `/Users/ahnwoojin/Github/adaria-ai` exists and is empty
+- [x] Confirm `/Users/ahnwoojin/Github/pilot-ai` is accessible for copying
+- [x] Confirm `/Users/ahnwoojin/growth-agent` is accessible for porting
+- [x] Commit growth-agent Phase 1 fix (silent-failure) and push — freeze from this point forward
+- [x] Verify `npm view adaria-ai` still returns 404 (not taken)
+- [x] Verify Node 20+ installed (`node --version`)
+- [x] Verify `claude` CLI installed and authed (`claude -p "hello"` works)
 
 ## M0 — Bootstrap (~0.5 day)
 
@@ -70,18 +70,18 @@ CI) are listed at the end.
 
 ### Copy from pilot-ai (per `porting-matrix.md`)
 
-- [ ] `src/agent/claude.ts` — adapted (120s default timeout; 15 min for weekly orchestrator config)
+- [x] `src/agent/claude.ts` — adapted (120s default timeout; 15 min for weekly orchestrator config)
 - [ ] `src/agent/core.ts` — **major trim**:
   - [ ] Drop: project resolver, pilot-ai md-based skills loader, memory context (project-scoped), Google/GitHub auth checks, token refresher, permission watcher
   - [ ] **Keep**: auth check, audit, reactions, status evolution, session continuity, error diff, msg_too_long fallback, **MCP context builder**, **tool-descriptions injection**, **MCP server health checks**
   - [ ] If trim takes > 1 day → stop and rewrite `core.ts` from scratch with pilot-ai as reference
-- [x] `src/agent/session.ts` — path change to `~/.adaria/sessions.json` via `paths.ts` (+ 8 unit tests)
-- [x] `src/agent/memory.ts` — project-scoped memory dropped; user memory + history retained (+ 11 unit tests)
-- [x] `src/agent/conversation-summary.ts` — project fields dropped; secret masking added at entry points per M1 storage review MED #2 (+ 12 unit tests)
-- [x] `src/agent/safety.ts` — pilot-ai ApprovalManager base (growth-agent gates merged in M5); dropped shell-oriented `classifySafety` (no shell tool in adaria-ai); added `ApprovalGate` type + `shutdown()` + duplicate-taskId fail-fast per M1 safety review HIGH; 8 unit tests
-- [x] `src/agent/audit.ts` — path change to `~/.adaria/audit.jsonl` (+ 8 unit tests; `MEMORY_DIR`/`CONVERSATIONS_DIR` added to `ensureAdariaDir` 0700 set per M1 storage review MED #1)
-- [x] `src/agent/mcp-manager.ts` — framework, no tools registered yet. **Deviation:** written fresh as a ~180 LOC skeleton instead of 🟢 copy; pilot-ai's 472-LOC version is ~80% third-party-server install machinery that has no domain fit. `porting-matrix.md` updated. Split `McpToolDescriptor` (daemon metadata) from `McpToolImplementation` (tool-host handler) per M1 MCP review HIGH #1 to respect the process boundary. `buildMcpConfig()` returns `null` when empty so core.ts can skip `--mcp-config` entirely (mirrors pilot-ai's `getMcpConfigPathIfExists`). 14 unit tests.
-- [x] `src/agent/mcp-launcher.ts` — framework only. **Deviation:** 45 LOC fresh write; pilot-ai's 187-LOC version generates bash Keychain wrappers for npx'd npm servers. adaria-ai launches its in-process tool host with `process.execPath` directly. 6 unit tests.
+- [x] `src/agent/session.ts` — path change to `~/.adaria/sessions.json` via `paths.ts`
+- [x] `src/agent/memory.ts` — conversation-scoped memory only
+- [x] `src/agent/conversation-summary.ts` — verbatim
+- [x] `src/agent/safety.ts` — pilot-ai ApprovalManager base (growth-agent gates merged in M5)
+- [x] `src/agent/audit.ts` — path change to `~/.adaria/audit.jsonl`
+- [x] `src/agent/mcp-manager.ts` — framework, no tools registered yet (rewritten as skeleton; see `porting-matrix.md`)
+- [x] `src/agent/mcp-launcher.ts` — framework only (rewritten as skeleton; see `porting-matrix.md`)
 - [ ] `src/messenger/adapter.ts`, `slack.ts` (add `eventTs` field), `split.ts`, `factory.ts`
 - [x] `src/security/auth.ts` (allowlist check, Slack-only), `prompt-guard.ts` (XML tag wrappers, wrapMemory intentionally omitted)
 - [x] `src/config/schema.ts` (zod, Slack + Claude + security + safety + agent), `store.ts` (YAML + chmod tightening for 0700/0600), `keychain.ts` (macOS security CLI, `adaria-ai:` prefix)
