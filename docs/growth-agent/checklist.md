@@ -83,7 +83,9 @@ CI) are listed at the end.
 - [ ] `src/agent/mcp-manager.ts` — framework, no tools registered yet
 - [ ] `src/agent/mcp-launcher.ts` — framework only
 - [ ] `src/messenger/adapter.ts`, `slack.ts` (add `eventTs` field), `split.ts`, `factory.ts`
-- [ ] `src/security/auth.ts`, `prompt-guard.ts`
+- [x] `src/security/auth.ts` (allowlist check, Slack-only), `prompt-guard.ts` (XML tag wrappers, wrapMemory intentionally omitted)
+- [x] `src/config/schema.ts` (zod, Slack + Claude + security + safety + agent), `store.ts` (YAML + chmod tightening for 0700/0600), `keychain.ts` (macOS security CLI, `adaria-ai:` prefix)
+- [x] `src/messenger/adapter.ts` (interface only — concrete SlackAdapter in M1d; `eventTs?: string` optional per M1c review H3)
 - [x] `src/utils/circuit-breaker.ts`, `rate-limiter.ts`, `logger.ts` (ADARIA_HOME aware, `adaria-` prefix), `retry.ts`, `escape.ts`, `errors.ts` (`AdariaError` + `withDefaults` helper for exactOptional), `parse-json.ts` (growth-agent port, bracket-matching) + 7 test files (68 tests passing)
 - [ ] `src/cli/daemon.ts`, `start.ts`, `stop.ts`, `status.ts`, `logs.ts`, `init.ts`, `doctor.ts`
 
