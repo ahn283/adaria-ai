@@ -78,7 +78,7 @@ CI) are listed at the end.
 - [x] `src/agent/session.ts` — path change to `~/.adaria/sessions.json` via `paths.ts` (+ 8 unit tests)
 - [x] `src/agent/memory.ts` — project-scoped memory dropped; user memory + history retained (+ 11 unit tests)
 - [x] `src/agent/conversation-summary.ts` — project fields dropped; secret masking added at entry points per M1 storage review MED #2 (+ 12 unit tests)
-- [ ] `src/agent/safety.ts` — pilot-ai ApprovalManager base (growth-agent gates merged in M5)
+- [x] `src/agent/safety.ts` — pilot-ai ApprovalManager base (growth-agent gates merged in M5); dropped shell-oriented `classifySafety` (no shell tool in adaria-ai); added `ApprovalGate` type + `shutdown()` + duplicate-taskId fail-fast per M1 safety review HIGH; 8 unit tests
 - [x] `src/agent/audit.ts` — path change to `~/.adaria/audit.jsonl` (+ 8 unit tests; `MEMORY_DIR`/`CONVERSATIONS_DIR` added to `ensureAdariaDir` 0700 set per M1 storage review MED #1)
 - [ ] `src/agent/mcp-manager.ts` — framework, no tools registered yet
 - [ ] `src/agent/mcp-launcher.ts` — framework only
