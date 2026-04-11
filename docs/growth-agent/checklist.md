@@ -87,17 +87,17 @@ CI) are listed at the end.
 - [x] `src/config/schema.ts` (zod, Slack + Claude + security + safety + agent), `store.ts` (YAML + chmod tightening for 0700/0600), `keychain.ts` (macOS security CLI, `adaria-ai:` prefix)
 - [x] `src/messenger/adapter.ts` (interface only — concrete SlackAdapter in M1d; `eventTs?: string` optional per M1c review H3)
 - [x] `src/utils/circuit-breaker.ts`, `rate-limiter.ts`, `logger.ts` (ADARIA_HOME aware, `adaria-` prefix), `retry.ts`, `escape.ts`, `errors.ts` (`AdariaError` + `withDefaults` helper for exactOptional), `parse-json.ts` (growth-agent port, bracket-matching) + 7 test files (68 tests passing)
-- [ ] `src/cli/daemon.ts`, `start.ts`, `stop.ts`, `status.ts`, `logs.ts`, `init.ts`, `doctor.ts`
+- [x] `src/cli/daemon.ts`, `start.ts`, `stop.ts`, `status.ts`, `logs.ts`, `init.ts`, `doctor.ts`
 
 ### Adapt + wire
 
-- [ ] Adapt `src/config/store.ts` and `schema.ts` to adaria-ai config shape (slack + claude; no google/github/tools)
-- [ ] Write `launchd/com.adaria-ai.daemon.plist.template` based on growth-agent's
+- [x] Adapt `src/config/store.ts` and `schema.ts` to adaria-ai config shape (slack + claude; no google/github/tools)
+- [x] Write `launchd/com.adaria-ai.daemon.plist.template` based on growth-agent's
 - [x] Rewire `core.handleMessage`:
   - [x] Mode A: dispatch to placeholder skill registry that returns `"(skill not implemented)"` for every command
   - [x] Mode B: fall through to Claude CLI with empty MCP tool list (framework plumbing verified)
-- [ ] `adaria-ai init` wizard: bot token, signing secret, app token, allowlist user ID, channel
-- [ ] `adaria-ai start` → launchctl load → daemon visible in `launchctl list`
+- [x] `adaria-ai init` wizard: bot token, signing secret, app token, allowlist user ID, channel
+- [x] `adaria-ai start` → launchctl load → daemon visible in `launchctl list`
 
 ### Verify
 
@@ -412,7 +412,7 @@ CI) are listed at the end.
 | Milestone | Est. days | Status | Started | Completed |
 |-----------|:---------:|--------|---------|-----------|
 | M0 Bootstrap | 0.5 | ✅ | 2026-04-12 | 2026-04-12 |
-| M1 Runtime import | 1.5 | ⬜ | — | — |
+| M1 Runtime import | 1.5 | 🟨 | 2026-04-12 | — (code + tests landed; awaiting manual Slack smoke test per exit-criteria section) |
 | M2 Collectors | 1.0 | ⬜ | — | — |
 | M3 DB + config | 0.5 | ⬜ | — | — |
 | M4 ASO skill | 1.5 | ⬜ | — | — |

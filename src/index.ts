@@ -16,8 +16,71 @@ program
   .name("adaria-ai")
   .description(
     pkg.description ??
-      "Marketing operations agent for the Adaria.ai app portfolio"
+      "Marketing operations agent for the Adaria.ai app portfolio",
   )
   .version(pkg.version);
 
-program.parse();
+program
+  .command("init")
+  .description("Interactive setup wizard")
+  .action(async () => {
+    const { runInit } = await import("./cli/init.js");
+    await runInit();
+    // Inquirer leaves readline handles open; force exit so launchd users
+    // don't see a dangling process after init finishes.
+    process.exit(0);
+  });
+
+program
+  .command("daemon")
+  .description("Run the reactive Slack daemon in foreground (launchd entry)")
+  .action(async () => {
+    const { runDaemon } = await import("./cli/daemon.js");
+    await runDaemon();
+  });
+
+program
+  .command("start")
+  .description("Load the adaria-ai daemon into launchd")
+  .action(async () => {
+    const { runStart } = await import("./cli/start.js");
+    await runStart();
+  });
+
+program
+  .command("stop")
+  .description("Unload the adaria-ai daemon from launchd")
+  .action(async () => {
+    const { runStop } = await import("./cli/stop.js");
+    await runStop();
+  });
+
+program
+  .command("status")
+  .description("Show launchd status for the adaria-ai daemon")
+  .action(async () => {
+    const { runStatus } = await import("./cli/status.js");
+    await runStatus();
+  });
+
+program
+  .command("logs")
+  .description("Print (or follow) ~/.adaria/logs/adaria-YYYY-MM-DD.log")
+  .option("-f, --follow", "Follow log output")
+  .action(async (opts: { follow?: boolean }) => {
+    const { runLogs } = await import("./cli/logs.js");
+    await runLogs(opts);
+  });
+
+program
+  .command("doctor")
+  .description("Run health checks against config, Claude CLI, and allowlist")
+  .action(async () => {
+    const { runDoctor } = await import("./cli/doctor.js");
+    await runDoctor();
+  });
+
+program.parseAsync().catch((err: unknown) => {
+  console.error(err instanceof Error ? err.message : String(err));
+  process.exit(1);
+});

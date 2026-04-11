@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  launchd template for adaria-ai (reactive Slack daemon).
+
+  Placeholders are substituted by `src/cli/start.ts` at install time:
+    __NODE_BIN__     — absolute path to the Node binary running adaria-ai
+    __SCRIPT_PATH__  — absolute path to adaria-ai's dist/index.js entry
+    __ADARIA_HOME__  — $ADARIA_HOME (defaults to ~/.adaria)
+    __LOG_DIR__      — $ADARIA_HOME/logs
+    __PATH__         — value to use as $PATH (launchd's default is near-empty)
+
+  Do NOT edit the installed plist directly — re-run `adaria-ai start`.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.adaria-ai.daemon</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>__NODE_BIN__</string>
+        <string>__SCRIPT_PATH__</string>
+        <string>daemon</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>__PATH__</string>
+        <key>ADARIA_HOME</key>
+        <string>__ADARIA_HOME__</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!--
+      Respawn only on actual crashes, not on clean exit. When
+      `src/cli/daemon.ts` can't load config, it logs the reason and
+      exits(0) — `SuccessfulExit=false` keeps launchd from restarting
+      the daemon in that case, avoiding a 30-second respawn loop that
+      would spam ~/.adaria/logs/daemon.err.log (M1 CLI review HIGH #1).
+    -->
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+        <key>Crashed</key>
+        <true/>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>__LOG_DIR__/daemon.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>__LOG_DIR__/daemon.err.log</string>
+
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+</dict>
+</plist>
