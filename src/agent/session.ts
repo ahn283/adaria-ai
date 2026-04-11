@@ -91,11 +91,18 @@ export async function createSession(
   platform: "slack",
   channelId: string,
   threadId: string,
+  explicitSessionId?: string,
 ): Promise<SessionEntry> {
   await ensureLoaded();
 
   const entry: SessionEntry = {
-    sessionId: crypto.randomUUID(),
+    // When `explicitSessionId` is provided, the caller is responsible for
+    // ensuring the same UUID is handed to Claude CLI via `--session-id`.
+    // The msg_too_long fallback in `core.ts` relies on this to keep the
+    // stored mapping and Claude's actual session in lock-step; otherwise
+    // the next message on the thread would `--resume` a UUID Claude has
+    // never seen (M1 core review HIGH #1).
+    sessionId: explicitSessionId ?? crypto.randomUUID(),
     threadId,
     channelId,
     platform,

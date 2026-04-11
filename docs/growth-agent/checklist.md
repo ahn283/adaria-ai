@@ -71,10 +71,10 @@ CI) are listed at the end.
 ### Copy from pilot-ai (per `porting-matrix.md`)
 
 - [x] `src/agent/claude.ts` — adapted (120s default timeout; 15 min for weekly orchestrator config)
-- [ ] `src/agent/core.ts` — **major trim**:
-  - [ ] Drop: project resolver, pilot-ai md-based skills loader, memory context (project-scoped), Google/GitHub auth checks, token refresher, permission watcher
-  - [ ] **Keep**: auth check, audit, reactions, status evolution, session continuity, error diff, msg_too_long fallback, **MCP context builder**, **tool-descriptions injection**, **MCP server health checks**
-  - [ ] If trim takes > 1 day → stop and rewrite `core.ts` from scratch with pilot-ai as reference
+- [x] `src/agent/core.ts` — **major trim**:
+  - [x] Drop: project resolver, pilot-ai md-based skills loader, memory context (project-scoped), Google/GitHub auth checks, token refresher, permission watcher
+  - [x] **Keep**: auth check, audit, reactions, status evolution, session continuity, error diff, msg_too_long fallback, **MCP context builder**, **tool-descriptions injection**, **MCP server health checks**
+  - [x] If trim takes > 1 day → stop and rewrite `core.ts` from scratch with pilot-ai as reference
 - [x] `src/agent/session.ts` — path change to `~/.adaria/sessions.json` via `paths.ts`
 - [x] `src/agent/memory.ts` — conversation-scoped memory only
 - [x] `src/agent/conversation-summary.ts` — verbatim
@@ -93,9 +93,9 @@ CI) are listed at the end.
 
 - [ ] Adapt `src/config/store.ts` and `schema.ts` to adaria-ai config shape (slack + claude; no google/github/tools)
 - [ ] Write `launchd/com.adaria-ai.daemon.plist.template` based on growth-agent's
-- [ ] Rewire `core.handleMessage`:
-  - [ ] Mode A: dispatch to placeholder skill registry that returns `"(skill not implemented)"` for every command
-  - [ ] Mode B: fall through to Claude CLI with empty MCP tool list (framework plumbing verified)
+- [x] Rewire `core.handleMessage`:
+  - [x] Mode A: dispatch to placeholder skill registry that returns `"(skill not implemented)"` for every command
+  - [x] Mode B: fall through to Claude CLI with empty MCP tool list (framework plumbing verified)
 - [ ] `adaria-ai init` wizard: bot token, signing secret, app token, allowlist user ID, channel
 - [ ] `adaria-ai start` → launchctl load → daemon visible in `launchctl list`
 
