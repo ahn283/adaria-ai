@@ -63,8 +63,10 @@ CI) are listed at the end.
 
 ### Tooling upgrades (deferred from M0 review)
 
-- [ ] Split `tsconfig.json` → `tsconfig.json` (type-check, includes `tests/`) + `tsconfig.build.json` (build, excludes `tests/`). Current M0 tsconfig excludes `tests/` which would blindside vitest type coverage.
-- [ ] Enable type-aware ESLint: `parserOptions: { project: "./tsconfig.json", tsconfigRootDir: import.meta.dirname }` + `tseslint.configs.recommendedTypeChecked`. Needed before porting `core.ts` to catch floating promises.
+- [x] Split `tsconfig.json` → `tsconfig.base.json` (shared compilerOptions) + `tsconfig.json` (noEmit, includes src + tests, used by IDE and ESLint) + `tsconfig.build.json` (build, excludes tests)
+- [x] Add `typecheck` npm script (`tsc --noEmit` against tsconfig.json)
+- [x] Enable type-aware ESLint with `tseslint.configs.recommendedTypeChecked`, `no-floating-promises`, `no-misused-promises`; `tsconfigRootDir` resolved via `fileURLToPath` for Node 20.0 compat
+- [x] Config files (`eslint.config.js`, `*.config.*`) excluded from type-aware linting to avoid circular tsconfig include
 
 ### Copy from pilot-ai (per `porting-matrix.md`)
 

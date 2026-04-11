@@ -19,8 +19,9 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
