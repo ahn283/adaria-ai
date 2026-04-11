@@ -51,7 +51,7 @@ CI) are listed at the end.
 - [x] `npm test` runs zero tests (no failures, via `--passWithNoTests`)
 - [x] `npm pack --dry-run` shows only `dist/`, `src/`, `prompts/.gitkeep`, `launchd/.gitkeep`, `package.json`, `README.md`, `LICENSE` — no leaks
 - [x] `npm publish` refused with `EPRIVATE` (guard verified)
-- [ ] Commit: `chore: bootstrap adaria-ai TypeScript project`
+- [x] Commit: `chore: bootstrap adaria-ai TypeScript project` (ee8a573)
 
 **Exit criteria verification:**
 - [x] `node dist/index.js --version` prints the version (`0.0.1`)
@@ -407,7 +407,7 @@ CI) are listed at the end.
 
 | Milestone | Est. days | Status | Started | Completed |
 |-----------|:---------:|--------|---------|-----------|
-| M0 Bootstrap | 0.5 | 🟨 pending commit | 2026-04-12 | — |
+| M0 Bootstrap | 0.5 | ✅ | 2026-04-12 | 2026-04-12 |
 | M1 Runtime import | 1.5 | ⬜ | — | — |
 | M2 Collectors | 1.0 | ⬜ | — | — |
 | M3 DB + config | 0.5 | ⬜ | — | — |
