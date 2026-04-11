@@ -19,3 +19,5 @@ export const AUDIT_PATH = path.join(ADARIA_HOME, "audit.jsonl");
 export const DATA_DIR = path.join(ADARIA_HOME, "data");
 export const DB_PATH = path.join(DATA_DIR, "adaria.db");
 export const LOGS_DIR = path.join(ADARIA_HOME, "logs");
+export const MEMORY_DIR = path.join(ADARIA_HOME, "memory");
+export const CONVERSATIONS_DIR = path.join(ADARIA_HOME, "conversations");

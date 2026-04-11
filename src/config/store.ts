@@ -9,12 +9,14 @@ import { getSecret } from "./keychain.js";
 import {
   ADARIA_HOME,
   CONFIG_PATH,
+  CONVERSATIONS_DIR,
   DATA_DIR,
   LOGS_DIR,
+  MEMORY_DIR,
 } from "../utils/paths.js";
 import { ConfigError } from "../utils/errors.js";
 
-const ADARIA_SUBDIRS = [LOGS_DIR, DATA_DIR];
+const ADARIA_SUBDIRS = [LOGS_DIR, DATA_DIR, MEMORY_DIR, CONVERSATIONS_DIR];
 
 /**
  * Create $ADARIA_HOME and all required subdirectories and force 0700 perms.
