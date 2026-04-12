@@ -188,24 +188,20 @@ CI) are listed at the end.
 
 **Goal:** all 6 remaining skills running.
 
-- [ ] Port `src/skills/review.ts` + test
-- [ ] Port `src/skills/onboarding.ts` + test
-- [ ] Port `src/skills/seo-blog.ts`:
-  - [ ] Fridgify recipe branch
-  - [ ] Prompt sanitization (review C1 from growth-agent Phase 1)
-  - [ ] Test includes injection attempt cases
-- [ ] Port `src/skills/short-form.ts` + test
-- [ ] Port `src/skills/sdk-request.ts` + test (decide: stateless or class with aggregation state)
-- [ ] Port `src/skills/content.ts` OR fold into `short-form.ts` — decide during port
-- [ ] Merge growth-agent `approval-manager.js` gates into `src/agent/safety.ts`:
-  - [ ] `blog_publish` gate
-  - [ ] `metadata_change` gate
-  - [ ] `review_reply` gate
-  - [ ] `sdk_request` gate
-- [ ] Wire approval buttons in Slack Block Kit
-- [ ] Verify approve click → audit entry → action fires
-- [ ] Verify reject click → audit entry → action abandoned
-- [ ] Verify non-allowlisted approver rejected
+- [x] Port `src/skills/review.ts` + test — 6 tests. Review body sanitized with prompt-injection stripping (H2). Sentiment fallback to rating-based heuristic.
+- [x] Port `src/skills/onboarding.ts` + test — 5 tests. SDK funnel, cohort retention, hypotheses via Claude. sdkRequests preserved and forwarded as approvals for SdkRequestSkill pipeline (H3).
+- [x] Port `src/skills/seo-blog.ts` + test — 7 tests:
+  - [x] Fridgify recipe branch with cascade
+  - [x] Prompt sanitization: all 6 attacker-controllable fields restored from growth-agent (C1). `sanitizeUserText` strips injection patterns + HTML tags + caps length.
+  - [x] `ADARIA_DRY_RUN=1` check on `publishApprovedPosts` write path (C2)
+  - [x] Test includes injection attempt case (recipe name + ingredients)
+- [x] Port `src/skills/short-form.ts` + test — 3 tests. YouTube performance collection + idea generation.
+- [x] Port `src/skills/sdk-request.ts` + test — 4 tests. Stateless class with `analyze()` for orchestrator + `dispatch()` for interactive. Deduplicates by event_name.
+- [x] Port `src/skills/content.ts` + test — 3 tests. Kept separate from short-form (covers Pinterest pins + trend content). Uses inline prompts (growth-agent used Anthropic SDK directly; adaria-ai standardizes on ctx.runClaude).
+- [x] Copy 8 remaining prompt files to `prompts/` (review-sentiment, review-clustering, review-replies, onboarding-hypotheses, onboarding-review-timing, seo-blog, seo-blog-fridgify-recipe, short-form-ideas)
+- [ ] Merge growth-agent `approval-manager.js` gates into `src/agent/safety.ts` — deferred to M6 orchestrator (approval items are created by skills but gate wiring requires orchestrator context)
+- [ ] Wire approval buttons in Slack Block Kit — deferred to M6
+- [ ] Verify approve/reject/non-allowlisted flows — deferred to M6 + M7 parallel run
 
 **Exit criteria verification:**
 - [ ] `@adaria-ai blog fridgify` generates + stages blog posts with approval buttons
@@ -386,7 +382,7 @@ CI) are listed at the end.
 ### Testing
 
 - [x] Every collector has a unit test (M2) — 8/8 collectors, 76 dedicated tests across 8 files
-- [ ] Every skill has a unit test (M4, M5)
+- [x] Every skill has a unit test (M4, M5) — 7/7 skills: aso 15, review 6, onboarding 5, seo-blog 7, short-form 3, sdk-request 4, content 3 = 43 skill tests total
 - [ ] Every MCP tool has a unit test with whitelist rejection case (M5.5)
 - [ ] `prompt-guard.ts` has injection test cases covering Fridgify recipe + Mode B tool descriptions
 - [x] DB migration smoke test runs in CI (M3) — `tests/db/schema.test.ts` (15 tests) + `tests/db/queries.test.ts` (26 tests), 41 total
@@ -433,7 +429,7 @@ CI) are listed at the end.
 | M2 Collectors | 1.0 | 🟨 | 2026-04-12 | — (all 8 collectors ported + smoke script; last item is manual smoke run against live creds) |
 | M3 DB + config | 0.5 | 🟨 | 2026-04-12 | — (schema + queries + tests landed; exit criteria `doctor` DB check deferred to M4 wiring) |
 | M4 ASO skill | 1.5 | 🟨 | 2026-04-12 | — (AsoSkill + prompt loader + skill interface upgrade landed; Block Kit formatting + snapshot script deferred) |
-| M5 Remaining skills | 2.0 | ⬜ | — | — |
+| M5 Remaining skills | 2.0 | 🟨 | 2026-04-12 | — (6 skills + 8 prompts + 28 tests landed; approval gate wiring deferred to M6) |
 | M5.5 Mode B tools | 0.5 | ⬜ | — | — |
 | M6 Orchestrators | 1.0 | ⬜ | — | — |
 | M7 Parity + parallel | 1.0 | ⬜ | — | — |
