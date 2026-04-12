@@ -21,6 +21,11 @@ import {
 const execFileAsync = promisify(execFile);
 
 export const DAEMON_LABEL = "com.adaria-ai.daemon";
+export const WEEKLY_LABEL = "com.adaria-ai.weekly";
+export const MONITOR_LABEL = "com.adaria-ai.monitor";
+
+/** All three launchd labels managed by adaria-ai. */
+export const ALL_LABELS = [DAEMON_LABEL, WEEKLY_LABEL, MONITOR_LABEL] as const;
 
 const LAUNCH_AGENTS_DIR = path.join(
   process.env["HOME"] ?? "",
@@ -28,8 +33,12 @@ const LAUNCH_AGENTS_DIR = path.join(
   "LaunchAgents",
 );
 
+export function getPlistPath(label: string): string {
+  return path.join(LAUNCH_AGENTS_DIR, `${label}.plist`);
+}
+
 export function getDaemonPlistPath(): string {
-  return path.join(LAUNCH_AGENTS_DIR, `${DAEMON_LABEL}.plist`);
+  return getPlistPath(DAEMON_LABEL);
 }
 
 function getDaemonEntryScriptPath(): string {
@@ -39,10 +48,10 @@ function getDaemonEntryScriptPath(): string {
   return path.resolve(path.dirname(thisFile), "..", "index.js");
 }
 
-async function renderPlist(): Promise<string> {
+async function renderPlist(label: string = DAEMON_LABEL): Promise<string> {
   const templatePath = path.join(
     BUNDLED_LAUNCHD_DIR,
-    `${DAEMON_LABEL}.plist.template`,
+    `${label}.plist.template`,
   );
   const template = await fs.readFile(templatePath, "utf-8");
 
@@ -61,11 +70,37 @@ async function renderPlist(): Promise<string> {
     .replaceAll("__PATH__", pathValue);
 }
 
-export async function isDaemonLoaded(): Promise<boolean> {
+export async function isLabelLoaded(label: string): Promise<boolean> {
   try {
     const { stdout } = await execFileAsync("launchctl", ["list"]);
-    return stdout.includes(DAEMON_LABEL);
+    return stdout.split("\n").some((l) => l.trim().split(/\s+/)[2] === label);
   } catch {
+    return false;
+  }
+}
+
+export async function isDaemonLoaded(): Promise<boolean> {
+  return isLabelLoaded(DAEMON_LABEL);
+}
+
+async function loadLabel(label: string): Promise<boolean> {
+  if (await isLabelLoaded(label)) {
+    console.log(`  ${label}: already loaded (skipped)`);
+    return true;
+  }
+
+  const plistContent = await renderPlist(label);
+  const plistPath = getPlistPath(label);
+  await fs.writeFile(plistPath, plistContent, { mode: 0o644 });
+
+  try {
+    await execFileAsync("launchctl", ["load", plistPath]);
+    console.log(`  ${label}: loaded`);
+    return true;
+  } catch (err) {
+    console.error(
+      `  ${label}: launchctl load failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
     return false;
   }
 }
@@ -79,30 +114,21 @@ export async function runStart(): Promise<void> {
     return;
   }
 
-  if (await isDaemonLoaded()) {
-    console.log(`adaria-ai daemon is already loaded (${DAEMON_LABEL}).`);
-    console.log(
-      'Run "adaria-ai stop" first if you want to re-render the plist with updated paths or config changes (M1 CLI review MED #3).',
-    );
-    return;
-  }
-
   await fs.mkdir(LOGS_DIR, { recursive: true, mode: 0o700 });
   await fs.mkdir(LAUNCH_AGENTS_DIR, { recursive: true });
 
-  const plistContent = await renderPlist();
-  const plistPath = getDaemonPlistPath();
-  await fs.writeFile(plistPath, plistContent, { mode: 0o644 });
+  console.log("Loading adaria-ai launchd agents...");
 
-  try {
-    await execFileAsync("launchctl", ["load", plistPath]);
-    console.log(`adaria-ai daemon loaded (${DAEMON_LABEL}).`);
-    console.log(`  Logs: ${LOGS_DIR}/daemon.out.log`);
-    console.log(`  Plist: ${plistPath}`);
-  } catch (err) {
-    console.error(
-      `launchctl load failed: ${err instanceof Error ? err.message : String(err)}`,
-    );
+  let allOk = true;
+  for (const label of ALL_LABELS) {
+    const ok = await loadLabel(label);
+    if (!ok) allOk = false;
+  }
+
+  if (allOk) {
+    console.log(`\nAll 3 agents loaded. Logs: ${LOGS_DIR}/`);
+  } else {
+    console.error("\nSome agents failed to load. Check errors above.");
     process.exitCode = 1;
   }
 }

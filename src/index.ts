@@ -73,6 +73,22 @@ program
   });
 
 program
+  .command("analyze")
+  .description("Run the weekly orchestrator (one-shot, launchd cron entry)")
+  .action(async () => {
+    const { runAnalyze } = await import("./cli/analyze.js");
+    await runAnalyze();
+  });
+
+program
+  .command("monitor")
+  .description("Run the daily monitor (one-shot, launchd cron entry)")
+  .action(async () => {
+    const { runMonitorCmd } = await import("./cli/monitor-cmd.js");
+    await runMonitorCmd();
+  });
+
+program
   .command("doctor")
   .description("Run health checks against config, Claude CLI, and allowlist")
   .action(async () => {

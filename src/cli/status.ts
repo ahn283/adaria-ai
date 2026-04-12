@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { DAEMON_LABEL } from "./start.js";
+import { ALL_LABELS } from "./start.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -43,9 +43,7 @@ export async function getJobStatus(label: string): Promise<JobStatus> {
 }
 
 export async function runStatus(): Promise<void> {
-  // M1 only tracks the reactive daemon. M6 will add the weekly + monitor
-  // cron labels to this list.
-  const labels = [DAEMON_LABEL];
+  const labels = ALL_LABELS;
 
   for (const label of labels) {
     const status = await getJobStatus(label);

@@ -51,12 +51,34 @@ export const safetyConfigSchema = z.object({
   approvalTimeoutMinutes: z.number().int().positive().default(30),
 });
 
+export const thresholdsConfigSchema = z.object({
+  /** Keyword rank drop (positions) to trigger a critical alert. */
+  keywordRankAlert: z.number().int().positive().default(5),
+  /** Negative review ratio (0–1) to trigger a critical alert. */
+  reviewSentimentAlert: z.number().min(0).max(1).default(0.3),
+  /** 1-star reviews in 24h to trigger a warning. */
+  oneStarReviewAlert: z.number().int().nonnegative().default(3),
+  /** Install→signup conversion drop ratio (0–1) to trigger a warning. */
+  installSignupDropAlert: z.number().min(0).max(1).default(0.15),
+  /** Signup→subscription conversion drop ratio (0–1) to trigger a warning. */
+  subscriptionDropAlert: z.number().min(0).max(1).default(0.2),
+  /** SEO clicks WoW drop ratio to trigger a warning. */
+  seoClicksDropAlert: z.number().min(0).max(1).default(0.3),
+  /** SEO impressions WoW drop ratio to trigger a warning. */
+  seoImpressionsDropAlert: z.number().min(0).max(1).default(0.3),
+  /** Web traffic sessions WoW drop ratio to trigger a warning. */
+  webTrafficDropAlert: z.number().min(0).max(1).default(0.25),
+});
+
 export const agentConfigSchema = z.object({
   /** Whether to stream Claude's thinking snippets back to the Slack message. */
   showThinking: z.boolean().default(true),
   /** Default briefing channel (e.g. "#growth"). Used by the weekly
-   *  orchestrator (M6) for posting the Sunday briefing. Optional until M6. */
+   *  orchestrator (M6) for posting the Sunday briefing. */
   briefingChannel: z.string().optional(),
+  /** Claude CLI timeout override for weekly orchestrator (ms). Weekly
+   *  analysis skills may take much longer than interactive commands. */
+  weeklyTimeoutMs: z.number().int().positive().default(900_000),
 });
 
 // ---------------------------------------------------------------------------
@@ -121,7 +143,20 @@ export const configSchema = z.object({
     dangerousActionsRequireApproval: true,
     approvalTimeoutMinutes: 30,
   }),
-  agent: agentConfigSchema.default({ showThinking: true }),
+  agent: agentConfigSchema.default({
+    showThinking: true,
+    weeklyTimeoutMs: 900_000,
+  }),
+  thresholds: thresholdsConfigSchema.default({
+    keywordRankAlert: 5,
+    reviewSentimentAlert: 0.3,
+    oneStarReviewAlert: 3,
+    installSignupDropAlert: 0.15,
+    subscriptionDropAlert: 0.2,
+    seoClicksDropAlert: 0.3,
+    seoImpressionsDropAlert: 0.3,
+    webTrafficDropAlert: 0.25,
+  }),
   collectors: collectorsConfigSchema,
 });
 
@@ -131,6 +166,7 @@ export type ClaudeConfig = z.infer<typeof claudeConfigSchema>;
 export type SecurityConfig = z.infer<typeof securityConfigSchema>;
 export type SafetyConfig = z.infer<typeof safetyConfigSchema>;
 export type AgentConfig = z.infer<typeof agentConfigSchema>;
+export type ThresholdsConfig = z.infer<typeof thresholdsConfigSchema>;
 export type CollectorsConfig = z.infer<typeof collectorsConfigSchema>;
 export type AppStoreCollectorConfig = z.infer<
   typeof appStoreCollectorConfigSchema

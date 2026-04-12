@@ -342,7 +342,7 @@ export async function runInit(): Promise<void> {
   await setSecret(KEYCHAIN_KEYS.slackAppToken, slack.appToken);
   await setSecret(KEYCHAIN_KEYS.slackSigningSecret, slack.signingSecret);
 
-  const agent: AdariaConfig["agent"] = { showThinking: true };
+  const agent: AdariaConfig["agent"] = { showThinking: true, weeklyTimeoutMs: 900_000 };
   if (slack.briefingChannel.trim().length > 0) {
     agent.briefingChannel = slack.briefingChannel.trim();
   }

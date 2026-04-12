@@ -1,29 +1,24 @@
 import fs from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import {
-  DAEMON_LABEL,
-  getDaemonPlistPath,
-  isDaemonLoaded,
-} from "./start.js";
+import { ALL_LABELS, getPlistPath, isLabelLoaded } from "./start.js";
 
 const execFileAsync = promisify(execFile);
 
-export async function runStop(): Promise<void> {
-  if (!(await isDaemonLoaded())) {
-    console.log("adaria-ai daemon is not loaded.");
+async function unloadLabel(label: string): Promise<void> {
+  if (!(await isLabelLoaded(label))) {
+    console.log(`  ${label}: not loaded (skipped)`);
     return;
   }
 
-  const plistPath = getDaemonPlistPath();
+  const plistPath = getPlistPath(label);
 
   try {
     await execFileAsync("launchctl", ["unload", plistPath]);
   } catch (err) {
     console.error(
-      `launchctl unload failed: ${err instanceof Error ? err.message : String(err)}`,
+      `  ${label}: launchctl unload failed: ${err instanceof Error ? err.message : String(err)}`,
     );
-    process.exitCode = 1;
     return;
   }
 
@@ -33,5 +28,15 @@ export async function runStop(): Promise<void> {
     // Plist already removed, ok.
   }
 
-  console.log(`adaria-ai daemon unloaded (${DAEMON_LABEL}).`);
+  console.log(`  ${label}: unloaded`);
+}
+
+export async function runStop(): Promise<void> {
+  console.log("Unloading adaria-ai launchd agents...");
+
+  for (const label of ALL_LABELS) {
+    await unloadLabel(label);
+  }
+
+  console.log("\nDone.");
 }
