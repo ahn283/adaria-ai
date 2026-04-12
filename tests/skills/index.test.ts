@@ -53,7 +53,7 @@ describe("SkillRegistry", () => {
 });
 
 describe("createM1PlaceholderRegistry", () => {
-  it("registers all seven placeholder skill command words", async () => {
+  it("registers all seven placeholder skill command words", () => {
     const reg = createM1PlaceholderRegistry();
     const commands = [
       "aso",
