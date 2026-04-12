@@ -32,7 +32,7 @@ Built for the [Adaria.ai](https://adaria.ai) app portfolio (Fridgify, Arden TTS,
 | Mode | Trigger | Example |
 |------|---------|---------|
 | **Mode A** &mdash; Skill command | `@adaria-ai aso fridgify` | Runs full ASO analysis with keyword rankings, competitor diffs, and metadata proposals |
-| **Mode B** &mdash; Conversational | `@adaria-ai 이번 주 리뷰 어때?` | Claude answers using 4 read-only MCP tools against your marketing data |
+| **Mode B** &mdash; Conversational | `@adaria-ai how are reviews this week?` | Claude answers using 4 read-only MCP tools against your marketing data |
 
 **Automated Briefings** &mdash; Weekly growth reports and daily threshold alerts delivered to Slack on a launchd cron schedule.
 
