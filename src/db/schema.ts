@@ -199,6 +199,28 @@ const MIGRATIONS: Migration[] = [
         ON blog_performance(date);
     `,
   },
+  {
+    version: 6,
+    up: `
+      CREATE TABLE IF NOT EXISTS social_posts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        app_id TEXT NOT NULL,
+        platform TEXT NOT NULL CHECK(platform IN ('twitter', 'facebook', 'threads', 'tiktok', 'youtube', 'linkedin')),
+        post_id TEXT,
+        post_url TEXT,
+        content TEXT NOT NULL,
+        image_url TEXT,
+        status TEXT NOT NULL DEFAULT 'posted' CHECK(status IN ('posted', 'deleted', 'failed')),
+        posted_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_sp_app_platform
+        ON social_posts(app_id, platform);
+
+      CREATE INDEX IF NOT EXISTS idx_sp_posted_at
+        ON social_posts(posted_at);
+    `,
+  },
 ];
 
 /**

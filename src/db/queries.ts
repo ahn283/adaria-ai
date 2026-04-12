@@ -773,3 +773,75 @@ export function getTopBlogPerformance(
 ): TopBlogPerformanceRow[] {
   return getStmt(db, SQL_BLOG_PERF_TOP).all(startDate, endDate, limit) as TopBlogPerformanceRow[];
 }
+
+// ---------------------------------------------------------------------------
+// Social Posts
+// ---------------------------------------------------------------------------
+
+export interface SocialPostRow {
+  id: number;
+  app_id: string;
+  platform: string;
+  post_id: string | null;
+  post_url: string | null;
+  content: string;
+  image_url: string | null;
+  status: string;
+  posted_at: string;
+}
+
+const SQL_INSERT_SOCIAL_POST = `INSERT INTO social_posts (app_id, platform, post_id, post_url, content, image_url, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`;
+
+const SQL_SOCIAL_POSTS_BY_APP = `SELECT * FROM social_posts
+       WHERE app_id = ? AND posted_at >= datetime('now', ?)
+       ORDER BY posted_at DESC`;
+
+const SQL_SOCIAL_POSTS_BY_PLATFORM = `SELECT * FROM social_posts
+       WHERE app_id = ? AND platform = ? AND posted_at >= datetime('now', ?)
+       ORDER BY posted_at DESC`;
+
+const SQL_UPDATE_SOCIAL_POST_STATUS = "UPDATE social_posts SET status = ? WHERE id = ?";
+
+export function insertSocialPost(
+  db: Database.Database,
+  params: {
+    app_id: string;
+    platform: string;
+    post_id: string | null;
+    post_url: string | null;
+    content: string;
+    image_url: string | null;
+    status?: string;
+  },
+): Database.RunResult {
+  return getStmt(db, SQL_INSERT_SOCIAL_POST).run(
+    params.app_id, params.platform, params.post_id, params.post_url,
+    params.content, params.image_url, params.status ?? "posted",
+  );
+}
+
+export function getSocialPostsByApp(
+  db: Database.Database,
+  appId: string,
+  days = 30,
+): SocialPostRow[] {
+  return getStmt(db, SQL_SOCIAL_POSTS_BY_APP).all(appId, `-${String(days)} days`) as SocialPostRow[];
+}
+
+export function getSocialPostsByPlatform(
+  db: Database.Database,
+  appId: string,
+  platform: string,
+  days = 30,
+): SocialPostRow[] {
+  return getStmt(db, SQL_SOCIAL_POSTS_BY_PLATFORM).all(appId, platform, `-${String(days)} days`) as SocialPostRow[];
+}
+
+export function updateSocialPostStatus(
+  db: Database.Database,
+  id: number,
+  status: "posted" | "deleted" | "failed",
+): Database.RunResult {
+  return getStmt(db, SQL_UPDATE_SOCIAL_POST_STATUS).run(status, id);
+}

@@ -15,7 +15,8 @@ export type ApprovalGate =
   | "blog_publish"
   | "metadata_change"
   | "review_reply"
-  | "sdk_request";
+  | "sdk_request"
+  | "social_publish";
 
 export interface PendingApproval {
   taskId: string;

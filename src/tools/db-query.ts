@@ -24,6 +24,7 @@ const ALLOWED_TABLES = new Set([
   "seo_metrics",
   "web_traffic",
   "blog_performance",
+  "social_posts",
 ]);
 
 /** Columns that must never be returned — contains raw user-authored text

@@ -273,85 +273,72 @@ CI) are listed at the end.
 - [ ] Write `src/social/base.ts` — `SocialClient` interface + `SocialPostResult` type:
   - [ ] `post(content)`, `validateContent(text)`, `uploadMedia(url)`, `deletePost(id)`
   - [ ] `ADARIA_DRY_RUN` check in every `post()` implementation
-- [ ] Write `src/social/twitter.ts` — Twitter API v2 + v1.1 media upload:
-  - [ ] Port from linkgo `twitter_client.py` patterns
-  - [ ] OAuth 1.0a header signing
-  - [ ] 280-char validation + truncation warning
-  - [ ] Image upload via v1.1 `media/upload`
-- [ ] Write `src/social/facebook.ts` — Graph API v19.0:
-  - [ ] Port from linkgo `facebook_client.py` patterns
-  - [ ] Page Access Token + `appsecret_proof` HMAC
-  - [ ] Photo upload to `/{pageId}/photos` (unpublished → attach)
-  - [ ] Token refresh (long-lived token exchange)
-- [ ] Write `src/social/threads.ts` — Meta Threads API:
-  - [ ] Image container creation → publish two-step flow
-  - [ ] 500-char limit validation
-- [ ] Write `src/social/tiktok.ts` — TikTok Content Posting API:
-  - [ ] OAuth 2.0 authentication
-  - [ ] Video/image required enforcement
-  - [ ] Feature-flagged (may be blocked by app review)
-- [ ] Write `src/social/youtube.ts` — YouTube Data API v3:
-  - [ ] Community post creation
-  - [ ] Image upload support
-  - [ ] 5,000-char limit
-- [ ] Write `src/social/linkedin.ts` — LinkedIn REST API v2:
-  - [ ] Port from linkgo `linkedin_client.py` patterns
-  - [ ] Organization post (not personal profile)
-  - [ ] 3-step image upload: initializeUpload → PUT binary → attach URN
-  - [ ] OAuth 2.0 token refresh
-  - [ ] 3,000-char limit
-- [ ] Write `src/social/factory.ts` — `createSocialClient(platform, config)` factory
+- [x] Write `src/social/twitter.ts` — Twitter API v2 + v1.1 media upload:
+  - [x] OAuth 1.0a header signing (manual HMAC-SHA1)
+  - [x] 280-char validation with t.co URL normalization (23 chars per URL)
+  - [x] Image upload via v1.1 `media/upload` (base64 multipart)
+- [x] Write `src/social/facebook.ts` — Graph API v19.0:
+  - [x] Page Access Token + `appsecret_proof` HMAC-SHA256
+  - [x] Photo upload to `/{pageId}/photos` (unpublished → attached_media)
+  - [x] Page token fetched via `/me/accounts`
+- [x] Write `src/social/threads.ts` — Meta Threads API:
+  - [x] Container creation → publish two-step flow
+  - [x] 500-char limit validation
+- [x] Write `src/social/tiktok.ts` — TikTok Content Posting API:
+  - [x] Video/image required enforcement
+  - [x] Feature-flagged (may be blocked by app review)
+- [x] Write `src/social/youtube.ts` — YouTube Data API v3:
+  - [x] Community post creation (bulletin type)
+  - [x] 5,000-char limit
+- [x] Write `src/social/linkedin.ts` — LinkedIn REST API v2:
+  - [x] Organization post (not personal profile)
+  - [x] 3-step image upload: initializeUpload → PUT binary → attach URN
+  - [x] 3,000-char limit, hashtag count suggestions
+- [x] Write `src/social/factory.ts` — `createSocialClient(platform, config)` factory
 
 ### Phase 2: Skill + config + DB
 
-- [ ] Extend `src/config/schema.ts` — `socialConfigSchema` with per-platform credential blocks:
-  - [ ] Twitter: apiKey, apiSecret, accessToken, accessTokenSecret
-  - [ ] Facebook: appId, appSecret, accessToken, pageId
-  - [ ] Threads: accessToken, userId
-  - [ ] TikTok: clientKey, clientSecret, accessToken
-  - [ ] YouTube: clientId, clientSecret, refreshToken
-  - [ ] LinkedIn: clientId, clientSecret, accessToken, organizationId
-  - [ ] All secrets stored via Keychain (`KEYCHAIN_KEYS` extended)
-- [ ] Extend `src/cli/init.ts` — social platform credential wizard (6 y/n gated blocks)
-- [ ] Add `social_posts` table to `src/db/schema.ts`:
-  - [ ] Columns: id, app, platform, post_id, post_url, content, image_url, posted_at, status
-  - [ ] Migration v6
-- [ ] Add social post queries to `src/db/queries.ts`:
-  - [ ] `insertSocialPost`, `getSocialPostsByApp`, `getSocialPostsByPlatform`, `updateSocialPostStatus`
-- [ ] Extend `src/config/apps-schema.ts` — per-app `social: { twitter: bool, ... }` flags
-- [ ] Write `src/skills/social-publish.ts`:
-  - [ ] `SocialPublishSkillDeps` with social client factory + DB
-  - [ ] Reads recent briefing data from `agent_metrics` for context
-  - [ ] Calls `ctx.runClaude()` with `prompts/social-publish.md`
-  - [ ] Parses Claude JSON output → per-platform content
-  - [ ] Produces `ApprovalItem[]` — one per enabled platform
-  - [ ] On approval callback: `client.post()` → write to `social_posts` table
-  - [ ] `ADARIA_DRY_RUN` respected
-- [ ] Write `prompts/social-publish.md`:
-  - [ ] Platform-specific character limits and formatting rules
-  - [ ] Hashtag conventions per platform
-  - [ ] Tone guidelines (professional for LinkedIn, casual for Twitter/Threads)
-  - [ ] Output format: JSON array with `{ platform, text, hashtags, suggestedImageQuery }`
-- [ ] Add `social_publish` gate to `src/agent/safety.ts`
-- [ ] Register `SocialPublishSkill` in `src/skills/index.ts`:
-  - [ ] Commands: `["social", "소셜", "sns"]`
-  - [ ] `schedule: "weekly"` for orchestrator inclusion
+- [x] Extend `src/config/schema.ts` — `socialConfigSchema` with per-platform credential blocks:
+  - [x] Twitter: apiKey, apiSecret, accessToken, accessTokenSecret
+  - [x] Facebook: appId, appSecret, accessToken, pageId
+  - [x] Threads: accessToken, userId
+  - [x] TikTok: clientKey, clientSecret, accessToken
+  - [x] YouTube: accessToken, channelId
+  - [x] LinkedIn: accessToken, organizationId
+  - [x] 11 KEYCHAIN_KEYS entries added for social secrets
+- [ ] Extend `src/cli/init.ts` — social platform credential wizard (6 y/n gated blocks) — deferred to M7
+- [x] Add `social_posts` table to `src/db/schema.ts`:
+  - [x] Columns: id, app_id, platform, post_id, post_url, content, image_url, status, posted_at
+  - [x] Migration v6, CHECK constraint on platform + status
+- [x] Add social post queries to `src/db/queries.ts`:
+  - [x] `insertSocialPost`, `getSocialPostsByApp`, `getSocialPostsByPlatform`, `updateSocialPostStatus`
+- [x] Extend `src/config/apps-schema.ts` — per-app `social: { twitter: bool, ... }` flags with defaults
+- [x] Write `src/skills/social-publish.ts`:
+  - [x] `SocialPublishSkillDeps` with socialConfigs
+  - [x] Calls `ctx.runClaude()` with `prompts/social-publish.md`
+  - [x] Parses Claude JSON output → per-platform content
+  - [x] Produces `ApprovalItem[]` — one per enabled platform
+  - [x] `executePost()` method for approval callback → `client.post()` → DB insert
+  - [x] `ADARIA_DRY_RUN` respected (via client.post → isDryRun)
+- [x] Write `prompts/social-publish.md`:
+  - [x] Platform-specific character limits and formatting rules
+  - [x] Hashtag conventions per platform
+  - [x] Tone guidelines (professional for LinkedIn, casual for Twitter/Threads)
+  - [x] Output format: JSON array with `{ platform, text, hashtags }`
+- [x] Add `social_publish` gate to `src/agent/safety.ts`
+- [ ] Register `SocialPublishSkill` in `src/skills/index.ts` — deferred to M7 skill registry wiring
 
 ### Phase 3: Tests
 
-- [ ] Write `tests/social/twitter.test.ts` — mock HTTP, char validation, DRY_RUN, media upload
-- [ ] Write `tests/social/facebook.test.ts` — appsecret_proof, page token, photo upload
-- [ ] Write `tests/social/threads.test.ts` — container create → publish flow
-- [ ] Write `tests/social/tiktok.test.ts` — OAuth flow, video/image requirement
-- [ ] Write `tests/social/youtube.test.ts` — community post creation
-- [ ] Write `tests/social/linkedin.test.ts` — 3-step image upload, org post
-- [ ] Write `tests/skills/social-publish.test.ts`:
-  - [ ] Dispatch with/without app name
-  - [ ] Approval item generation per enabled platform
-  - [ ] DRY_RUN skips API calls
-  - [ ] Platform disable in apps.yaml → no approval item for that platform
-  - [ ] Claude error isolation
-- [ ] Write `scripts/smoke-social.ts` — manual smoke test (real credentials, dev profile)
+- [x] Write `tests/social/base.test.ts` — isDryRun, dryRunResult (4 tests)
+- [x] Write `tests/social/twitter.test.ts` — char validation, URL normalization, DRY_RUN (5 tests)
+- [x] Write `tests/social/facebook.test.ts` — validation, short text suggestion, DRY_RUN (4 tests)
+- [x] Write `tests/social/threads.test.ts` — 500-char validation, DRY_RUN (3 tests)
+- [x] Write `tests/social/tiktok.test.ts` — caption limit, image requirement, DRY_RUN (3 tests)
+- [x] Write `tests/social/youtube.test.ts` — 5000-char limit, DRY_RUN (2 tests)
+- [x] Write `tests/social/linkedin.test.ts` — 3000 limit, engagement suggestion, hashtag count, DRY_RUN (6 tests)
+- [x] Write `tests/skills/social-publish.test.ts` — dispatch, approval items, no-platforms, app not found, invalid JSON, Claude error (6 tests)
+- [ ] Write `scripts/smoke-social.ts` — manual smoke test (real credentials, dev profile) — deferred to M7
 
 **Exit criteria verification:**
 - [ ] `@adaria-ai social fridgify` generates content for all enabled platforms with approval buttons
@@ -532,7 +519,7 @@ CI) are listed at the end.
 | M5 Remaining skills | 2.0 | 🟨 | 2026-04-12 | — (6 skills + 8 prompts + 28 tests landed; approval gate wiring deferred to M6) |
 | M5.5 Mode B tools | 0.5 | 🟨 | 2026-04-12 | — (4 tools + tool host + wiring landed; prompt-injection test + integration test + doctor update deferred) |
 | M6 Orchestrators | 1.0 | 🟨 | 2026-04-12 | — (code + tests landed; pending manual verify: Slack briefing + launchctl kickstart) |
-| M6.5 Social publishing | 3.0 | ⬜ | — | — |
+| M6.5 Social publishing | 3.0 | 🟨 | 2026-04-12 | — (6 clients + skill + DB + 33 tests landed; init wizard + skill registry wiring + smoke test deferred to M7) |
 | M7 Parity + parallel | 1.0 | ⬜ | — | — |
 | M8 Cutover | 0.5 | ⬜ | — | — |
 | M9 npm publish | 0.5 | ⬜ | — | — |

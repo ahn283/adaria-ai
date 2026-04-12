@@ -36,7 +36,7 @@ describe("initDatabase", () => {
     expect(mode[0]?.journal_mode).toBe("wal");
   });
 
-  it("creates all 11 tables", () => {
+  it("creates all 12 tables", () => {
     const db = initDatabase(tmpDbPath());
     dbs.push(db);
 
@@ -57,6 +57,7 @@ describe("initDatabase", () => {
       "sdk_events",
       "seo_metrics",
       "short_form_performance",
+      "social_posts",
       "web_traffic",
     ]);
   });

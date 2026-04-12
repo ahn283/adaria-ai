@@ -123,6 +123,60 @@ export const ardenTtsCollectorConfigSchema = z.object({
   endpoint: z.string().url(),
 });
 
+// ---------------------------------------------------------------------------
+// Social platform credentials
+// ---------------------------------------------------------------------------
+
+export const twitterSocialConfigSchema = z.object({
+  apiKey: z.string().min(1),
+  apiSecret: z.string().min(1),
+  accessToken: z.string().min(1),
+  accessTokenSecret: z.string().min(1),
+});
+
+export const facebookSocialConfigSchema = z.object({
+  appId: z.string().min(1),
+  appSecret: z.string().min(1),
+  accessToken: z.string().min(1),
+  pageId: z.string().min(1),
+});
+
+export const threadsSocialConfigSchema = z.object({
+  accessToken: z.string().min(1),
+  userId: z.string().min(1),
+});
+
+export const tiktokSocialConfigSchema = z.object({
+  clientKey: z.string().min(1),
+  clientSecret: z.string().min(1),
+  accessToken: z.string().min(1),
+});
+
+export const youtubeSocialConfigSchema = z.object({
+  accessToken: z.string().min(1),
+  channelId: z.string().min(1),
+});
+
+export const linkedinSocialConfigSchema = z.object({
+  accessToken: z.string().min(1),
+  organizationId: z.string().min(1),
+});
+
+export const socialConfigSchema = z
+  .object({
+    twitter: twitterSocialConfigSchema.optional(),
+    facebook: facebookSocialConfigSchema.optional(),
+    threads: threadsSocialConfigSchema.optional(),
+    tiktok: tiktokSocialConfigSchema.optional(),
+    youtube: youtubeSocialConfigSchema.optional(),
+    linkedin: linkedinSocialConfigSchema.optional(),
+  })
+  .default({});
+
+// ---------------------------------------------------------------------------
+// Collector credentials (global — per-app identifiers live in apps.yaml)
+// ---------------------------------------------------------------------------
+
 export const collectorsConfigSchema = z
   .object({
     appStore: appStoreCollectorConfigSchema.optional(),
@@ -147,6 +201,7 @@ export const configSchema = z.object({
     showThinking: true,
     weeklyTimeoutMs: 900_000,
   }),
+  social: socialConfigSchema,
   thresholds: thresholdsConfigSchema.default({
     keywordRankAlert: 5,
     reviewSentimentAlert: 0.3,
@@ -167,6 +222,7 @@ export type SecurityConfig = z.infer<typeof securityConfigSchema>;
 export type SafetyConfig = z.infer<typeof safetyConfigSchema>;
 export type AgentConfig = z.infer<typeof agentConfigSchema>;
 export type ThresholdsConfig = z.infer<typeof thresholdsConfigSchema>;
+export type SocialConfig = z.infer<typeof socialConfigSchema>;
 export type CollectorsConfig = z.infer<typeof collectorsConfigSchema>;
 export type AppStoreCollectorConfig = z.infer<
   typeof appStoreCollectorConfigSchema
@@ -207,4 +263,16 @@ export const KEYCHAIN_KEYS = {
   eodinGrowthToken: "collector-eodin-growth-token",
   asoMobileApiKey: "collector-asomobile-api-key",
   youtubeApiKey: "collector-youtube-api-key",
+  // Social platform secrets
+  twitterApiKey: "social-twitter-api-key",
+  twitterApiSecret: "social-twitter-api-secret",
+  twitterAccessToken: "social-twitter-access-token",
+  twitterAccessTokenSecret: "social-twitter-access-token-secret",
+  facebookAppSecret: "social-facebook-app-secret",
+  facebookAccessToken: "social-facebook-access-token",
+  threadsAccessToken: "social-threads-access-token",
+  tiktokClientSecret: "social-tiktok-client-secret",
+  tiktokAccessToken: "social-tiktok-access-token",
+  youtubeAccessToken: "social-youtube-access-token",
+  linkedinAccessToken: "social-linkedin-access-token",
 } as const;

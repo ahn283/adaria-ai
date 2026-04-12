@@ -19,6 +19,24 @@ import { z } from "zod";
 
 export const appPlatformSchema = z.enum(["ios", "android"]);
 
+export const appSocialSchema = z
+  .object({
+    twitter: z.boolean().default(false),
+    facebook: z.boolean().default(false),
+    threads: z.boolean().default(false),
+    tiktok: z.boolean().default(false),
+    youtube: z.boolean().default(false),
+    linkedin: z.boolean().default(false),
+  })
+  .default({
+    twitter: false,
+    facebook: false,
+    threads: false,
+    tiktok: false,
+    youtube: false,
+    linkedin: false,
+  });
+
 export const appFeaturesSchema = z
   .object({
     /** Enable the Fridgify recipe cascade in SeoBlogSkill (M5+). */
@@ -44,6 +62,7 @@ export const appConfigSchema = z.object({
   competitors: z.array(z.string()).default([]),
   locale: z.array(z.string()).default([]),
   features: appFeaturesSchema,
+  social: appSocialSchema,
   active: z.boolean().default(true),
 });
 
