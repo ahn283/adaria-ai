@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/ahn283/adaria-ai/main/assets/logo.png" alt="adaria.ai" width="420" />
+  <img src="./assets/logo.png" alt="adaria.ai" width="420" />
 </p>
 
 <p align="center">
