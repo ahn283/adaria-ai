@@ -55,3 +55,11 @@ export interface SkillResult {
   /** Approval items requiring human confirmation. */
   approvals: ApprovalItem[];
 }
+
+/**
+ * Skills with approval-gated write paths implement this interface.
+ * `core.ts` calls `executePost` when an approval button is clicked.
+ */
+export interface ExecutableSkill {
+  executePost(ctx: SkillContext, payload: unknown): Promise<void>;
+}

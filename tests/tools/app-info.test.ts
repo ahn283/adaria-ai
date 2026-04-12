@@ -7,12 +7,16 @@ const testApps: AppConfig[] = [
     id: "fridgify", name: "Fridgify", platform: ["ios", "android"],
     appStoreId: "123", playStorePackage: "com.eodin.fridgify",
     primaryKeywords: ["recipe"], competitors: ["comp1"], locale: ["en"],
-    features: { fridgifyRecipes: true }, active: true,
+    features: { fridgifyRecipes: true },
+    social: { twitter: false, facebook: false, threads: false, tiktok: false, youtube: false, linkedin: false },
+    active: true,
   },
   {
     id: "arden", name: "Arden TTS", platform: ["ios"],
     primaryKeywords: ["tts"], competitors: [], locale: ["en"],
-    features: { fridgifyRecipes: false }, active: true,
+    features: { fridgifyRecipes: false },
+    social: { twitter: false, facebook: false, threads: false, tiktok: false, youtube: false, linkedin: false },
+    active: true,
   },
 ];
 

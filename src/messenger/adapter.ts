@@ -63,6 +63,17 @@ export interface MessengerAdapter {
     threadId?: string
   ): Promise<void>;
 
+  /**
+   * Send a message with Slack Block Kit blocks. `fallbackText` is shown
+   * in notifications and non-Block-Kit clients.
+   */
+  sendBlocks?(
+    channelId: string,
+    fallbackText: string,
+    blocks: readonly Record<string, unknown>[],
+    threadId?: string,
+  ): Promise<string>;
+
   /** Add a reaction to a message (best-effort; no-op if unsupported). */
   addReaction?(
     channelId: string,

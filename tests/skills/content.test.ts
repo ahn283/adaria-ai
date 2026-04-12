@@ -7,7 +7,9 @@ import type { AdariaConfig } from "../../src/config/schema.js";
 const testApp: AppConfig = {
   id: "fridgify", name: "Fridgify", platform: ["ios"],
   primaryKeywords: ["recipe app", "meal planner"], competitors: [],
-  locale: ["en"], features: { fridgifyRecipes: false }, active: true,
+  locale: ["en"], features: { fridgifyRecipes: false },
+  social: { twitter: false, facebook: false, threads: false, tiktok: false, youtube: false, linkedin: false },
+  active: true,
 };
 
 const testConfig: AdariaConfig = {
@@ -15,7 +17,10 @@ const testConfig: AdariaConfig = {
   claude: { mode: "cli", cliBinary: "claude", apiKey: null, timeoutMs: 120_000 },
   security: { allowedUsers: [], dmOnly: false, auditLog: { enabled: true, maskSecrets: true } },
   safety: { dangerousActionsRequireApproval: true, approvalTimeoutMinutes: 30 },
-  agent: { showThinking: true }, collectors: {},
+  agent: { showThinking: true, weeklyTimeoutMs: 900_000 },
+  social: {},
+  thresholds: { keywordRankAlert: 5, reviewSentimentAlert: 0.3, oneStarReviewAlert: 3, installSignupDropAlert: 0.15, subscriptionDropAlert: 0.2, seoClicksDropAlert: 0.3, seoImpressionsDropAlert: 0.3, webTrafficDropAlert: 0.25 },
+  collectors: {},
 };
 
 function createCtx(): SkillContext {

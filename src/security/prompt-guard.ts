@@ -50,3 +50,26 @@ export function wrapSkill(name: string, content: string): string {
     { name }
   );
 }
+
+/**
+ * Strip common prompt injection patterns from attacker-controllable text.
+ * Used for Fridgify recipe data, review bodies, competitor descriptions,
+ * and any other external text that will be included in a Claude prompt.
+ */
+export function sanitizeExternalText(
+  value: string,
+  maxLen = 2000,
+): string {
+  return value
+    // Strip HTML tags
+    .replace(/<\/?[a-zA-Z][^>]*>/g, " ")
+    // Strip known injection prefixes
+    .replace(/\bignore (?:all )?previous (?:instructions|prompts?)\b/gi, "[filtered]")
+    .replace(/\b(?:system|assistant|user)\s*:/gi, "[filtered]:")
+    // Strip XML-like tag attempts (e.g. </TOOL_OUTPUT>)
+    .replace(/<\/?(?:TOOL_OUTPUT|USER_COMMAND|TASK_CONTEXT|SKILL|SYSTEM)\b[^>]*>/gi, "[filtered]")
+    // Normalize whitespace
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLen);
+}

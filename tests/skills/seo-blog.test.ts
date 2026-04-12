@@ -18,7 +18,9 @@ const fridgifyApp: AppConfig = {
   id: "fridgify", name: "Fridgify", platform: ["ios"],
   appStoreId: "123", primaryKeywords: ["recipe app"],
   competitors: [], locale: ["en"],
-  features: { fridgifyRecipes: true }, active: true,
+  features: { fridgifyRecipes: true },
+  social: { twitter: false, facebook: false, threads: false, tiktok: false, youtube: false, linkedin: false },
+  active: true,
 };
 
 const genericApp: AppConfig = {
@@ -31,7 +33,10 @@ const testConfig: AdariaConfig = {
   claude: { mode: "cli", cliBinary: "claude", apiKey: null, timeoutMs: 120_000 },
   security: { allowedUsers: [], dmOnly: false, auditLog: { enabled: true, maskSecrets: true } },
   safety: { dangerousActionsRequireApproval: true, approvalTimeoutMinutes: 30 },
-  agent: { showThinking: true }, collectors: {},
+  agent: { showThinking: true, weeklyTimeoutMs: 900_000 },
+  social: {},
+  thresholds: { keywordRankAlert: 5, reviewSentimentAlert: 0.3, oneStarReviewAlert: 3, installSignupDropAlert: 0.15, subscriptionDropAlert: 0.2, seoClicksDropAlert: 0.3, seoImpressionsDropAlert: 0.3, webTrafficDropAlert: 0.25 },
+  collectors: {},
 };
 
 function createCtx(db: Database.Database, apps: AppConfig[] = [fridgifyApp]): SkillContext {

@@ -6,7 +6,9 @@ import type { AppConfig } from "../../src/config/apps-schema.js";
 const testApp: AppConfig = {
   id: "fridgify", name: "Fridgify", platform: ["ios"],
   primaryKeywords: [], competitors: [], locale: ["en"],
-  features: { fridgifyRecipes: false }, active: true,
+  features: { fridgifyRecipes: false },
+  social: { twitter: false, facebook: false, threads: false, tiktok: false, youtube: false, linkedin: false },
+  active: true,
 };
 
 const dummyCtx = { apps: [testApp] } as unknown as SkillContext;

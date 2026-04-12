@@ -30,6 +30,7 @@ function makeApp(overrides: Partial<AppConfig> = {}): AppConfig {
     competitors: [],
     locale: [],
     features: { fridgifyRecipes: false },
+    social: { twitter: false, facebook: false, threads: false, tiktok: false, youtube: false, linkedin: false },
     active: true,
     ...overrides,
   };

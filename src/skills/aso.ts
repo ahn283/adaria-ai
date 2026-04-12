@@ -28,13 +28,8 @@ import {
 } from "../db/queries.js";
 import { preparePrompt } from "../prompts/loader.js";
 import { warn as logWarn } from "../utils/logger.js";
+import { sanitizeExternalText } from "../security/prompt-guard.js";
 
-// TODO(M5.5): AsoCompetitorInfo.description is attacker-controllable.
-// When db-query.ts exposes competitor_metadata, raw descriptions in the
-// DB become an indirect prompt injection vector. M5.5 must either:
-// (a) strip/sanitize descriptions via prompt-guard before DB insert, or
-// (b) ensure db-query.ts never returns the description column.
-// For now, descriptions stored in diffs are truncated to 200 chars.
 const MAX_DESCRIPTION_LEN = 200;
 
 /** Threshold for keyword rank drops that trigger alerts. */
@@ -347,8 +342,8 @@ export class AsoSkill implements Skill {
         if (previous.description !== current.description) {
           diffs.push({
             field: "description",
-            old: previous.description ? previous.description.slice(0, MAX_DESCRIPTION_LEN) : previous.description,
-            new: current.description ? current.description.slice(0, MAX_DESCRIPTION_LEN) : current.description,
+            old: previous.description ? sanitizeExternalText(previous.description, MAX_DESCRIPTION_LEN) : previous.description,
+            new: current.description ? sanitizeExternalText(current.description, MAX_DESCRIPTION_LEN) : current.description,
           });
         }
         const prevKw = previous.keywords ?? "";
@@ -398,7 +393,7 @@ export class AsoSkill implements Skill {
       : "None";
 
     const metadataText = currentMetadata
-      ? `## Current metadata\n- Title: ${currentMetadata.name ?? ""}\n- Subtitle: ${currentMetadata.subtitle ?? ""}\n- Description (first 200 chars): ${currentMetadata.description?.slice(0, 200) ?? ""}...`
+      ? `## Current metadata\n- Title: ${currentMetadata.name ?? ""}\n- Subtitle: ${currentMetadata.subtitle ?? ""}\n- Description (first 200 chars): ${currentMetadata.description ? sanitizeExternalText(currentMetadata.description, 200) : ""}...`
       : "";
 
     const prompt = preparePrompt("aso-metadata", {

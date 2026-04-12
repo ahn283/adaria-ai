@@ -172,13 +172,13 @@ CI) are listed at the end.
   - [x] Returns `SkillResult { summary, alerts, approvals }` with approval item for metadata proposals
   - [x] Review C1: description diffs truncated to 200 chars + TODO for M5.5 prompt-guard
   - [x] Review H1: `runClaude` wrapper in core.ts writes audit log entries
-  - [ ] Review H2: circuit breaker on skill Claude calls — deferred to M6 orchestrator batch
+  - [x] Review H2: circuit breaker on skill Claude calls — added in core.ts buildSkillContext (threshold=3, 120s reset)
 - [x] Hook into `core.handleMessage`: `@adaria-ai aso fridgify` → dispatch `AsoSkill` via `buildSkillContext()`. Stub context fallback for M1 placeholder path.
-- [ ] Format Slack response using Block Kit — M4 returns mrkdwn summary text. Block Kit formatting deferred to M6 orchestrator (weekly briefing uses Block Kit sections).
+- [x] Format Slack response using Block Kit — `formatBriefingBlocks()` in weekly.ts, `sendBlocks` on MessengerAdapter, plain-text fallback for non-Block-Kit clients
 - [x] Write `src/prompts/loader.ts` — template loader with `{{var}}` substitution from bundled prompts/
 - [x] Copy 4 ASO prompt files to `prompts/` (aso-metadata, aso-screenshots, aso-inapp-events, aso-description)
 - [x] Write `tests/skills/aso.test.ts` — 15 tests: dispatch with/without app name, error handling, DB insertion, collector integration, Claude error isolation, approval item generation, platform-specific behavior
-- [ ] Write `scripts/snapshot-briefing.ts` — deferred to M7 parity check (not blocking M4 exit criteria)
+- [x] Write `scripts/snapshot-briefing.ts` — captures weekly analysis to JSON for M7 parity diff; `npm run snapshot:briefing`
 
 **Exit criteria verification:**
 - [ ] `@adaria-ai aso fridgify` returns the same analysis growth-agent produces
@@ -199,9 +199,9 @@ CI) are listed at the end.
 - [x] Port `src/skills/sdk-request.ts` + test — 4 tests. Stateless class with `analyze()` for orchestrator + `dispatch()` for interactive. Deduplicates by event_name.
 - [x] Port `src/skills/content.ts` + test — 3 tests. Kept separate from short-form (covers Pinterest pins + trend content). Uses inline prompts (growth-agent used Anthropic SDK directly; adaria-ai standardizes on ctx.runClaude).
 - [x] Copy 8 remaining prompt files to `prompts/` (review-sentiment, review-clustering, review-replies, onboarding-hypotheses, onboarding-review-timing, seo-blog, seo-blog-fridgify-recipe, short-form-ideas)
-- [ ] Merge growth-agent `approval-manager.js` gates into `src/agent/safety.ts` — deferred to M6 orchestrator (approval items are created by skills but gate wiring requires orchestrator context)
-- [ ] Wire approval buttons in Slack Block Kit — deferred to M6
-- [ ] Verify approve/reject/non-allowlisted flows — deferred to M6 + M7 parallel run
+- [x] Merge growth-agent `approval-manager.js` gates into `src/agent/safety.ts` — 5 gate types defined, core.ts wires approval buttons + requestApproval + onApprovalResolved
+- [x] Wire approval buttons in Slack Block Kit — core.ts sends approval via sendApproval for each SkillResult.approvals item
+- [ ] Verify approve/reject/non-allowlisted flows — requires manual Slack testing (M7 parallel run)
 
 **Exit criteria verification:**
 - [ ] `@adaria-ai blog fridgify` generates + stages blog posts with approval buttons
@@ -223,7 +223,7 @@ CI) are listed at the end.
 - [x] `core.ts` Mode B path already wired from M1 — MCP config now generated with real tool host when tools are registered.
 - [x] Write `tests/tools/db-query.test.ts` — whitelist rejection, SQL injection prevention, column redaction, limit cap, orderBy validation, empty results. 9 tests.
 - [x] Write `tests/tools/collector-fetch.test.ts` + `skill-result.test.ts` + `app-info.test.ts` — 11 tests total.
-- [ ] Write `tests/tools/prompt-injection.test.ts` — deferred (db-query tests already cover column name injection + whitelist bypass)
+- [x] Write `tests/tools/prompt-injection.test.ts` — 12 tests: Fridgify recipe injection, Mode B tool output, review body injection, XML tag escape, competitor metadata
 - [ ] Write `tests/integration/mode-b.test.ts` — deferred to M7 (requires live Claude CLI)
 - [x] Update `doctor.ts` — extended with DB, collectors, social checks (M7)
 
@@ -345,7 +345,7 @@ CI) are listed at the end.
 - [x] Write `tests/social/youtube.test.ts` — 5000-char limit, DRY_RUN (2 tests)
 - [x] Write `tests/social/linkedin.test.ts` — 3000 limit, engagement suggestion, hashtag count, DRY_RUN (6 tests)
 - [x] Write `tests/skills/social-publish.test.ts` — dispatch, approval items, no-platforms, app not found, invalid JSON, Claude error (6 tests)
-- [ ] Write `scripts/smoke-social.ts` — manual smoke test (real credentials, dev profile)
+- [x] Write `scripts/smoke-social.ts` — validates + dry-run posts for all 6 platforms; `npm run smoke:social`
 
 **Exit criteria verification:**
 - [ ] `@adaria-ai social fridgify` generates content for all enabled platforms with approval buttons
@@ -384,7 +384,7 @@ CI) are listed at the end.
 - [x] Add `socialPublish` to `WeeklyReport` interface + orchestrator dispatch (M6.5 H2)
 - [x] Wire `socialPublish` dispatcher in `analyze.ts`
 - [x] Include social results in `formatBriefingText` + `collectApprovalItems`
-- [ ] Wire `SocialPublishSkill.executePost()` to approval callback (M6.5 H4) — requires ApprovalManager rework, deferred to M8
+- [x] Wire `SocialPublishSkill.executePost()` to approval callback — core.ts onApprovalResolved() calls executePost() via duck-typing
 
 ### Doctor updates
 
@@ -397,14 +397,14 @@ CI) are listed at the end.
   - [x] Social platform credentials (6 platforms, optional, non-fatal)
   - [x] briefingChannel check
   - [x] DB accessible (table count)
-- [ ] Add warning: claude auth state touched within last 24h — deferred to M8
+- [x] Add warning: claude auth state touched within last 24h — doctor.ts checkClaudeAuthRecency()
 
 ### Docs
 
-- [ ] Write `docs/ARCHITECTURE.md` — system diagram, data flow, how skills dispatch
-- [ ] Write `docs/SETUP.md` — install + init + troubleshooting
-- [ ] Write `docs/SKILLS.md` — skill authoring guide
-- [ ] Start `docs/PORTING-LOG.md` — log surprises during the port
+- [x] Write `docs/ARCHITECTURE.md` — system diagram, two-mode dispatch, module layout, approval flow
+- [x] Write `docs/SETUP.md` — install + init + troubleshooting + dev profiles + rollback
+- [x] Write `docs/SKILLS.md` — skill interface, built-in skills, adding new skills, testing
+- [x] Start `docs/PORTING-LOG.md` — M1–M7 surprises and decisions
 
 ### Operational runbook (M7 parallel week)
 
@@ -483,17 +483,17 @@ CI) are listed at the end.
 - [x] SocialPublishSkill has unit tests (M6.5) — 6 tests
 - [x] Every social platform client has a unit test with DRY_RUN verification (M6.5) — 6 clients, 23 tests
 - [x] Every MCP tool has a unit test with whitelist rejection case (M5.5) — db-query 9, collector-fetch 4, skill-result 3, app-info 4 = 20 tool tests
-- [ ] `prompt-guard.ts` has injection test cases covering Fridgify recipe + Mode B tool descriptions
+- [x] `prompt-guard.ts` has injection test cases covering Fridgify recipe + Mode B tool descriptions — 12 tests in prompt-injection.test.ts + 7 tests for sanitizeExternalText
 - [x] DB migration smoke test runs in CI (M3) — `tests/db/schema.test.ts` (15 tests) + `tests/db/queries.test.ts` (26 tests), 41 total
 - [x] Orchestrator integration test with mocked collectors (M6) — weekly 8 tests, monitor 6 tests, dashboard 3 tests = 17 total
 
 ### Documentation
 
 - [x] `README.md` at repo root — install, usage, contributing (started M2; "Profiles and safety" section landed)
-- [ ] `docs/ARCHITECTURE.md` — system diagram, data flow (M7)
-- [ ] `docs/SETUP.md` — install + init + troubleshooting (M7)
-- [ ] `docs/SKILLS.md` — skill authoring guide (M7)
-- [ ] `docs/PORTING-LOG.md` — living log of port surprises (start M1, update through M8)
+- [x] `docs/ARCHITECTURE.md` — system diagram, data flow (M7)
+- [x] `docs/SETUP.md` — install + init + troubleshooting (M7)
+- [x] `docs/SKILLS.md` — skill authoring guide (M7)
+- [x] `docs/PORTING-LOG.md` — living log of port surprises (M1–M7)
 
 ### Security
 
@@ -530,12 +530,12 @@ CI) are listed at the end.
 | M1 Runtime import | 1.5 | 🟨 | 2026-04-12 | — (code + tests landed; awaiting manual Slack smoke test per exit-criteria section) |
 | M2 Collectors | 1.0 | 🟨 | 2026-04-12 | — (all 8 collectors ported + smoke script; last item is manual smoke run against live creds) |
 | M3 DB + config | 0.5 | 🟨 | 2026-04-12 | — (schema + queries + tests landed; exit criteria `doctor` DB check deferred to M4 wiring) |
-| M4 ASO skill | 1.5 | 🟨 | 2026-04-12 | — (AsoSkill + prompt loader + skill interface upgrade landed; Block Kit formatting + snapshot script deferred) |
-| M5 Remaining skills | 2.0 | 🟨 | 2026-04-12 | — (6 skills + 8 prompts + 28 tests landed; approval gate wiring deferred to M6) |
-| M5.5 Mode B tools | 0.5 | 🟨 | 2026-04-12 | — (4 tools + tool host + wiring landed; prompt-injection test + integration test + doctor update deferred) |
-| M6 Orchestrators | 1.0 | 🟨 | 2026-04-12 | — (code + tests landed; pending manual verify: Slack briefing + launchctl kickstart) |
-| M6.5 Social publishing | 3.0 | 🟨 | 2026-04-12 | — (6 clients + skill + DB + 33 tests landed; init wizard + skill registry wiring + smoke test deferred to M7) |
-| M7 Parity + parallel | 1.0 | 🟨 | 2026-04-12 | — (daemon wiring + doctor + orchestrator social landed; parallel run, docs, approval executePost wiring pending) |
+| M4 ASO skill | 1.5 | 🟨 | 2026-04-12 | — (all code items done; circuit breaker, Block Kit, snapshot script landed; manual Slack verify pending) |
+| M5 Remaining skills | 2.0 | 🟨 | 2026-04-12 | — (6 skills + approval wiring + Block Kit buttons landed; manual approve/reject verify pending) |
+| M5.5 Mode B tools | 0.5 | 🟨 | 2026-04-12 | — (4 tools + prompt-injection tests landed; integration test deferred to M7 parallel) |
+| M6 Orchestrators | 1.0 | 🟨 | 2026-04-12 | — (code + Block Kit briefing + tests landed; pending manual verify: Slack briefing + launchctl) |
+| M6.5 Social publishing | 3.0 | 🟨 | 2026-04-12 | — (6 clients + skill + smoke script + all tests landed; manual platform verify pending) |
+| M7 Parity + parallel | 1.0 | 🟨 | 2026-04-12 | — (all code items done: approval wiring, doctor auth, 4 docs, snapshot script; parallel run execution pending) |
 | M8 Cutover | 0.5 | ⬜ | — | — |
 | M9 npm publish | 0.5 | ⬜ | — | — |
 | **Total** | **~13** | | | |

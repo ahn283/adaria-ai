@@ -57,7 +57,9 @@ function buildConfig(): AdariaConfig {
       dangerousActionsRequireApproval: true,
       approvalTimeoutMinutes: 30,
     },
-    agent: { showThinking: true },
+    agent: { showThinking: true, weeklyTimeoutMs: 900_000 },
+    social: {},
+    thresholds: { keywordRankAlert: 5, reviewSentimentAlert: 0.3, oneStarReviewAlert: 3, installSignupDropAlert: 0.15, subscriptionDropAlert: 0.2, seoClicksDropAlert: 0.3, seoImpressionsDropAlert: 0.3, webTrafficDropAlert: 0.25 },
     collectors: {},
   };
 }

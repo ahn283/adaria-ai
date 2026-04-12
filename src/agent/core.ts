@@ -32,7 +32,7 @@ import crypto from "node:crypto";
 import type Database from "better-sqlite3";
 import type { AdariaConfig } from "../config/schema.js";
 import type { AppConfig } from "../config/apps-schema.js";
-import type { SkillContext } from "../types/skill.js";
+import type { SkillContext, ExecutableSkill } from "../types/skill.js";
 import type {
   IncomingMessage,
   MessengerAdapter,
@@ -59,6 +59,7 @@ import {
   updateConversationSummary,
 } from "./conversation-summary.js";
 import { AdariaError } from "../utils/errors.js";
+import { CircuitBreaker } from "../utils/circuit-breaker.js";
 import {
   error as logError,
   info as logInfo,
@@ -82,6 +83,15 @@ const DEFAULT_SYSTEM_PROMPT =
 const THINKING_THROTTLE_MS = 5_000;
 const MODE_B_MAX_TURNS = 25;
 
+function isExecutableSkill(skill: unknown): skill is ExecutableSkill {
+  return (
+    typeof skill === "object" &&
+    skill !== null &&
+    "executePost" in skill &&
+    typeof (skill as ExecutableSkill).executePost === "function"
+  );
+}
+
 export interface AgentCoreOptions {
   mcpManager?: McpManager;
   skillRegistry?: SkillRegistry;
@@ -99,6 +109,8 @@ export class AgentCore {
   private readonly skillRegistry: SkillRegistry;
   private readonly db: Database.Database | undefined;
   private readonly apps: AppConfig[];
+  private readonly skillClaudeBreaker: CircuitBreaker;
+  private readonly approvalPayloads = new Map<string, { agent: string; payload: unknown }>();
 
   constructor(
     messenger: MessengerAdapter,
@@ -113,6 +125,10 @@ export class AgentCore {
       options.skillRegistry ?? createM1PlaceholderRegistry();
     this.db = options.db;
     this.apps = options.apps ?? [];
+    this.skillClaudeBreaker = new CircuitBreaker({
+      failureThreshold: 3,
+      resetTimeout: 120_000,
+    });
 
     // Register MCP tools when DB is available (M5.5+). Without DB,
     // Mode B still works but has no tools (M1 placeholder behavior).
@@ -129,7 +145,15 @@ export class AgentCore {
   private setupHandlers(): void {
     this.messenger.onMessage((msg) => this.handleMessage(msg));
     this.messenger.onApproval((taskId, approved) => {
-      this.approvalManager.handleResponse(taskId, approved);
+      const handled = this.approvalManager.handleResponse(taskId, approved);
+      if (handled) {
+        writeAuditLog({
+          type: "result",
+          userId: "approver",
+          platform: "slack",
+          content: `[approval-response] taskId=${taskId} approved=${String(approved)}`,
+        }).catch(() => {/* audit write failure is non-blocking */});
+      }
     });
   }
 
@@ -241,6 +265,39 @@ export class AgentCore {
           };
           const result = await skill.dispatch(stubCtx, msg.text);
           response = result.summary;
+
+          // Send approval buttons and register pending approvals.
+          for (const item of result.approvals) {
+            const approvalText = `*[${item.agent}]* ${item.description}`;
+            await this.messenger.sendApproval(
+              msg.channelId,
+              approvalText,
+              item.id,
+              msg.threadId,
+            );
+            // Store payload for execution on approval
+            this.approvalPayloads.set(item.id, {
+              agent: item.agent,
+              payload: item.payload,
+            });
+            // Register with ApprovalManager (30 min timeout)
+            const timeoutMs =
+              (this.config.safety.approvalTimeoutMinutes ?? 30) * 60_000;
+            this.approvalManager
+              .requestApproval(item.id, item.description, timeoutMs)
+              .then((approved) => this.onApprovalResolved(item.id, approved))
+              .catch((err: unknown) => {
+                logWarn(
+                  `Approval registration failed for ${item.id}: ${err instanceof Error ? err.message : String(err)}`,
+                );
+              });
+            await writeAuditLog({
+              type: "command",
+              userId: msg.userId,
+              platform: msg.platform,
+              content: `[approval-request] ${item.agent}: ${item.description}`,
+            });
+          }
         } else {
           logInfo("Mode B: falling through to Claude CLI");
           response = await this.invokeClaudeWithContext(
@@ -562,26 +619,83 @@ export class AgentCore {
       apps: this.apps,
       config: this.config,
       runClaude: async (prompt: string): Promise<string> => {
-        await writeAuditLog({
-          type: "command",
-          userId: "skill",
-          platform: "internal",
-          content: `[skill-claude] ${prompt.slice(0, 200)}`,
+        return this.skillClaudeBreaker.execute(async () => {
+          await writeAuditLog({
+            type: "command",
+            userId: "skill",
+            platform: "internal",
+            content: `[skill-claude] ${prompt.slice(0, 200)}`,
+          });
+          const result = await invokeClaudeCli({
+            prompt,
+            cliBinary: this.config.claude.cliBinary,
+            timeoutMs: this.config.claude.timeoutMs,
+          });
+          await writeAuditLog({
+            type: "result",
+            userId: "skill",
+            platform: "internal",
+            content: `[skill-claude] ${result.result.slice(0, 500)}`,
+          });
+          return result.result;
         });
-        const result = await invokeClaudeCli({
-          prompt,
-          cliBinary: this.config.claude.cliBinary,
-          timeoutMs: this.config.claude.timeoutMs,
-        });
-        await writeAuditLog({
-          type: "result",
-          userId: "skill",
-          platform: "internal",
-          content: `[skill-claude] ${result.result.slice(0, 500)}`,
-        });
-        return result.result;
       },
     };
+  }
+
+  /**
+   * Called when an approval request is resolved (approved or timed out).
+   * Executes the associated action if approved.
+   */
+  private onApprovalResolved(taskId: string, approved: boolean): void {
+    const entry = this.approvalPayloads.get(taskId);
+    this.approvalPayloads.delete(taskId);
+
+    if (!approved || !entry) return;
+
+    const ctx = this.buildSkillContext();
+    if (!ctx) {
+      logWarn(`Cannot execute approval ${taskId}: DB not available`);
+      return;
+    }
+
+    // Defense-in-depth: block all write actions during M7 parallel run.
+    // Individual platform clients also check isDryRun(), but future skills
+    // (blog_publish, metadata_change) may not — gate it here.
+    if (process.env["ADARIA_DRY_RUN"] === "1") {
+      logInfo(
+        `[dry-run] Skipping approval execution for ${taskId} (agent=${entry.agent})`,
+      );
+      return;
+    }
+
+    // Dispatch to the appropriate skill's execution handler.
+    const skill = this.skillRegistry
+      .getSkills()
+      .find((s) => s.name === entry.agent);
+
+    if (!skill || !isExecutableSkill(skill)) {
+      logWarn(`No executePost handler for agent "${entry.agent}"`);
+      return;
+    }
+
+    skill
+      .executePost(ctx, entry.payload)
+      .then(() =>
+        writeAuditLog({
+          type: "result",
+          userId: "system",
+          platform: "internal",
+          content: `[approval-executed] ${taskId} agent=${entry.agent}`,
+        }),
+      )
+      .catch((err: unknown) => {
+        logError(
+          `Approval execution failed for ${taskId}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
+    // Other agents (blog_publish, review_reply, metadata_change) can use
+    // the same pattern — just add `executePost` to their skill class.
   }
 
   private createThinkingHandler(

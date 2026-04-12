@@ -6,6 +6,9 @@
  *
  * Exit code is 0 when every check passes, 1 otherwise.
  */
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { loadConfig } from "../config/store.js";
 import { initDatabase } from "../db/schema.js";
 import { checkClaudeCli, checkClaudeCliAuth } from "../agent/claude.js";
@@ -92,6 +95,49 @@ async function checkClaude(cliBinary: string): Promise<Check[]> {
   ];
 }
 
+/**
+ * Warn if ~/.claude auth state was modified within the last 24h.
+ * During M7 parallel run, re-authentication invalidates both daemons.
+ */
+function checkClaudeAuthRecency(): Check[] {
+  const claudeDir = path.join(os.homedir(), ".claude");
+  try {
+    if (!fs.existsSync(claudeDir)) {
+      return [check("claude auth recency", true, "~/.claude not found (skip)")];
+    }
+    const entries = fs.readdirSync(claudeDir);
+    const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+    let newestMtime = 0;
+    let newestFile = "";
+
+    for (const entry of entries) {
+      try {
+        const stat = fs.statSync(path.join(claudeDir, entry));
+        if (stat.mtimeMs > newestMtime) {
+          newestMtime = stat.mtimeMs;
+          newestFile = entry;
+        }
+      } catch {
+        // skip unreadable entries
+      }
+    }
+
+    if (newestMtime > twentyFourHoursAgo) {
+      const ago = Math.round((Date.now() - newestMtime) / 60_000);
+      return [
+        check(
+          "claude auth recency",
+          true, // warning, not failure
+          `WARNING: ~/.claude/${newestFile} modified ${String(ago)} min ago. If running M7 parallel, do NOT re-run /login.`,
+        ),
+      ];
+    }
+    return [check("claude auth recency", true, "no changes in last 24h")];
+  } catch {
+    return [check("claude auth recency", true, "could not check (skip)")];
+  }
+}
+
 function checkDb(): Check[] {
   try {
     const db = initDatabase();
@@ -159,6 +205,11 @@ export async function runDoctor(): Promise<void> {
   const claudeChecks = await checkClaude(cliBinary);
   results.push(...claudeChecks);
   for (const c of claudeChecks) printCheck(c);
+
+  // 2b. Claude auth recency (M7 parallel run warning)
+  const authChecks = checkClaudeAuthRecency();
+  results.push(...authChecks);
+  for (const c of authChecks) printCheck(c);
 
   // 3. Database
   console.log("\nDatabase:");

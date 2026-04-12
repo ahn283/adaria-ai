@@ -243,9 +243,14 @@ export async function runWeeklyAnalysis(
       try {
         logger.info(`Sending briefing for ${app.name}`);
 
-        // Send combined briefing as a single formatted message
+        // Send combined briefing — Block Kit when available, plain text fallback
         const briefingText = formatBriefingText(report);
-        await messenger.sendText(channel, briefingText);
+        if (messenger.sendBlocks) {
+          const blocks = formatBriefingBlocks(report);
+          await messenger.sendBlocks(channel, briefingText, blocks);
+        } else {
+          await messenger.sendText(channel, briefingText);
+        }
 
         // Send alerts
         const allAlerts = [
@@ -388,6 +393,60 @@ function formatBriefingText(report: WeeklyReport): string {
   return sections.join("\n");
 }
 
+/** Slack Block Kit representation of the weekly briefing. */
+function formatBriefingBlocks(
+  report: WeeklyReport,
+): Record<string, unknown>[] {
+  const BLOCK_TEXT_LIMIT = 3000;
+  const blocks: Record<string, unknown>[] = [];
+
+  blocks.push({
+    type: "header",
+    text: {
+      type: "plain_text",
+      text: `\ud83d\udcca ${report.appName} Weekly Growth Report \u2014 ${report.date}`,
+    },
+  });
+
+  const parts: Array<{ label: string; data: AgentRunResult | null }> = [
+    { label: "ASO", data: report.aso },
+    { label: "Onboarding", data: report.onboarding },
+    { label: "Reviews", data: report.reviews },
+    { label: "SEO Blog", data: report.seoBlog },
+    { label: "Short-form", data: report.shortForm },
+    { label: "Content", data: report.content },
+    { label: "Social", data: report.socialPublish },
+  ];
+
+  for (const p of parts) {
+    if (!p.data) continue;
+    blocks.push({ type: "divider" });
+    const text = `*${p.label}*\n${p.data.summary}`;
+    blocks.push({
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: text.length > BLOCK_TEXT_LIMIT
+          ? text.slice(0, BLOCK_TEXT_LIMIT - 3) + "..."
+          : text,
+      },
+    });
+  }
+
+  blocks.push({ type: "divider" });
+  blocks.push({
+    type: "context",
+    elements: [
+      {
+        type: "mrkdwn",
+        text: `_Next analysis: ${report.nextDate}_`,
+      },
+    ],
+  });
+
+  return blocks;
+}
+
 interface CollectedApproval {
   id: string;
   description: string;
@@ -436,6 +495,7 @@ export const _test = {
   agentResult,
   formatAlert,
   formatBriefingText,
+  formatBriefingBlocks,
   collectApprovalItems,
   recordMetric,
 } as const;

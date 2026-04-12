@@ -110,7 +110,9 @@ function buildConfig(overrides?: Partial<AdariaConfig>): AdariaConfig {
       dangerousActionsRequireApproval: true,
       approvalTimeoutMinutes: 30,
     },
-    agent: { showThinking: true },
+    agent: { showThinking: true, weeklyTimeoutMs: 900_000 },
+    social: {},
+    thresholds: { keywordRankAlert: 5, reviewSentimentAlert: 0.3, oneStarReviewAlert: 3, installSignupDropAlert: 0.15, subscriptionDropAlert: 0.2, seoClicksDropAlert: 0.3, seoImpressionsDropAlert: 0.3, webTrafficDropAlert: 0.25 },
     collectors: {},
     ...overrides,
   };
@@ -345,6 +347,95 @@ describe("AgentCore.handleMessage", () => {
         (l) => (JSON.parse(l) as { type: string }).type,
       );
       expect(types).toContain("error");
+    });
+  });
+
+  describe("Mode A — approval buttons", () => {
+    it("sends approval messages for each approval item returned by a skill", async () => {
+      const messenger = createMockMessenger();
+      const sendApprovalSpy = vi.spyOn(messenger, "sendApproval");
+      const registry = new SkillRegistry();
+      registry.register({
+        name: "approve-test",
+        commands: ["apptest"],
+        dispatch: () =>
+          Promise.resolve({
+            summary: "Analysis complete",
+            alerts: [],
+            approvals: [
+              { id: "meta-1", description: "Update title to X", agent: "aso" },
+              { id: "reply-1", description: "Reply to review #42", agent: "review" },
+            ],
+          }),
+      });
+      new AgentCore(messenger, buildConfig(), { skillRegistry: registry });
+
+      await messenger.__handlers.messageHandler?.(
+        buildIncoming({ text: "apptest fridgify" }),
+      );
+
+      expect(sendApprovalSpy).toHaveBeenCalledTimes(2);
+      expect(sendApprovalSpy).toHaveBeenCalledWith(
+        "C1",
+        expect.stringContaining("Update title"),
+        "meta-1",
+        "1700000000.001",
+      );
+    });
+  });
+
+  describe("skill Claude circuit breaker", () => {
+    it("trips circuit breaker after 3 consecutive skill Claude failures", async () => {
+      const messenger = createMockMessenger();
+      const { initDatabase } = await import("../../src/db/schema.js");
+      const dbPath = path.join(TEST_HOME, "data", "test-cb.db");
+      fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+      const db = initDatabase(dbPath);
+
+      let claudeCallCount = 0;
+      const registry = new SkillRegistry();
+      registry.register({
+        name: "claude-skill",
+        commands: ["cskill"],
+        dispatch: async (ctx) => {
+          // Each dispatch calls runClaude which goes through the circuit breaker
+          const result = await ctx.runClaude("test prompt");
+          return { summary: result, alerts: [], approvals: [] };
+        },
+      });
+
+      // Make Claude fail every time
+      invokeClaudeCliMock.mockImplementation(() => {
+        claudeCallCount++;
+        return Promise.reject(new Error("Claude down"));
+      });
+
+      new AgentCore(messenger, buildConfig(), {
+        skillRegistry: registry,
+        db,
+        apps: [],
+      });
+
+      // Fire 3 failures to trip the breaker (threshold=3)
+      for (let i = 0; i < 3; i++) {
+        await messenger.__handlers.messageHandler?.(
+          buildIncoming({ text: "cskill test", threadId: `cb-${String(i)}`, eventTs: `170000000${String(i)}.001` }),
+        );
+      }
+      expect(claudeCallCount).toBe(3);
+
+      // 4th call should be blocked by circuit breaker — Claude not called
+      claudeCallCount = 0;
+      await messenger.__handlers.messageHandler?.(
+        buildIncoming({ text: "cskill test", threadId: "cb-4", eventTs: "1700000004.001" }),
+      );
+      expect(claudeCallCount).toBe(0);
+
+      // Error message should mention circuit breaker
+      const last = messenger.__updated.at(-1);
+      expect(last?.text).toContain("Circuit breaker");
+
+      db.close();
     });
   });
 });

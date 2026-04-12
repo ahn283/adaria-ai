@@ -24,6 +24,7 @@ import {
 } from "../db/queries.js";
 import { preparePrompt } from "../prompts/loader.js";
 import { warn as logWarn } from "../utils/logger.js";
+import { sanitizeExternalText } from "../security/prompt-guard.js";
 
 function escapeXml(text: string): string {
   return text
@@ -36,13 +37,7 @@ function escapeXml(text: string): string {
 
 /** Strip common prompt-injection patterns from user-authored review text. */
 function sanitizeReviewBody(text: string, maxLen = 200): string {
-  return text
-    .replace(/\bignore (?:all )?previous (?:instructions|prompts?)\b/gi, "[filtered]")
-    .replace(/\b(?:system|assistant|user)\s*:/gi, "[filtered]:")
-    .replace(/<\/?[a-zA-Z][^>]*>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, maxLen);
+  return sanitizeExternalText(text, maxLen);
 }
 
 const DEFAULT_NEGATIVE_RATIO_THRESHOLD = 0.4;

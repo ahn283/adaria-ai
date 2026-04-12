@@ -27,6 +27,10 @@
     "test:watch": "vitest",
     "smoke:collectors": "tsx scripts/smoke-collectors.ts",
     "smoke:collectors:dev": "ADARIA_HOME=$HOME/.adaria-dev tsx scripts/smoke-collectors.ts",
+    "smoke:social": "ADARIA_DRY_RUN=1 tsx scripts/smoke-social.ts",
+    "smoke:social:dev": "ADARIA_HOME=$HOME/.adaria-dev ADARIA_DRY_RUN=1 tsx scripts/smoke-social.ts",
+    "snapshot:briefing": "ADARIA_DRY_RUN=1 tsx scripts/snapshot-briefing.ts",
+    "snapshot:briefing:dev": "ADARIA_HOME=$HOME/.adaria-dev ADARIA_DRY_RUN=1 tsx scripts/snapshot-briefing.ts",
     "init:dev": "ADARIA_HOME=$HOME/.adaria-dev tsx src/index.ts init",
     "check:tarball-secrets": "tsx scripts/check-tarball-secrets.ts",
     "prepublishOnly": "npm run build && npm run lint && npm test && npm run check:tarball-secrets"

@@ -322,6 +322,23 @@ export class SlackAdapter implements MessengerAdapter {
     }
   }
 
+  async sendBlocks(
+    channelId: string,
+    fallbackText: string,
+    blocks: readonly Record<string, unknown>[],
+    threadId?: string,
+  ): Promise<string> {
+    await this.rateLimiter.acquire();
+    const result = await this.app.client.chat.postMessage({
+      channel: channelId,
+      text: fallbackText,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+      blocks: blocks as any,
+      ...(threadId ? { thread_ts: threadId } : {}),
+    });
+    return result.ts ?? "";
+  }
+
   async addReaction(
     channelId: string,
     messageTs: string,
