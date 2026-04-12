@@ -145,18 +145,25 @@ type CollectorsDraft = {
 };
 
 async function askAppStore(): Promise<CollectorsDraft["appStore"] | undefined> {
+  console.log("\n  How to get App Store Connect API keys:");
+  console.log("  1. Go to https://appstoreconnect.apple.com/access/integrations/api");
+  console.log("  2. Click '+' to generate a new key (Admin role recommended)");
+  console.log("  3. Copy the Key ID (10-char alphanumeric, shown in the table)");
+  console.log("  4. Copy the Issuer ID (UUID, shown at the top of the page)");
+  console.log("  5. Download the .p8 private key file (only available once!)\n");
+
   const answers = await inquirer.prompt<{
     keyId: string;
     issuerId: string;
     privateKey: string;
   }>([
-    { type: "input", name: "keyId", message: "Key ID:", validate: (v: string) => v.length > 0 || "Required" },
-    { type: "input", name: "issuerId", message: "Issuer ID:", validate: (v: string) => v.length > 0 || "Required" },
+    { type: "input", name: "keyId", message: "Key ID (e.g. ABC1234DEF):", validate: (v: string) => v.length > 0 || "Required" },
+    { type: "input", name: "issuerId", message: "Issuer ID (UUID):", validate: (v: string) => v.length > 0 || "Required" },
     {
       type: "editor",
       name: "privateKey",
-      message: "Private key (paste PKCS#8 PEM, editor will open):",
-      validate: (v: string) => v.includes("BEGIN PRIVATE KEY") || "Expected PEM block",
+      message: "Private key (paste .p8 file contents, editor will open):",
+      validate: (v: string) => v.includes("BEGIN PRIVATE KEY") || "Expected PEM block (-----BEGIN PRIVATE KEY-----)",
     },
   ]);
   await setSecret(KEYCHAIN_KEYS.appStorePrivateKey, answers.privateKey);
@@ -164,11 +171,18 @@ async function askAppStore(): Promise<CollectorsDraft["appStore"] | undefined> {
 }
 
 async function askPlayStore(): Promise<CollectorsDraft["playStore"] | undefined> {
+  console.log("\n  How to get Google Play service account:");
+  console.log("  1. Go to https://console.cloud.google.com > IAM & Admin > Service Accounts");
+  console.log("  2. Create a service account (or use an existing one)");
+  console.log("  3. Click the account > Keys tab > Add Key > Create new key > JSON");
+  console.log("  4. Download the JSON file");
+  console.log("  5. In Google Play Console > Settings > API access, link this service account\n");
+
   const { serviceAccountJson } = await inquirer.prompt<{ serviceAccountJson: string }>([
     {
       type: "editor",
       name: "serviceAccountJson",
-      message: "Service account JSON (paste full file, editor will open):",
+      message: "Service account JSON (paste the downloaded JSON file contents):",
       validate: (v: string) => {
         try {
           const p: unknown = JSON.parse(v);
@@ -267,18 +281,25 @@ async function applyCollectors(
         break;
       }
       case "eodinSdk":
+        console.log("  Get your API key from the Eodin dashboard > Settings > API Keys\n");
         draft.eodinSdk = { apiKey: await askSecret("Eodin SDK API key", KEYCHAIN_KEYS.eodinSdkApiKey) };
         break;
       case "eodinGrowth":
+        console.log("  This is the GROWTH_AGENT_TOKEN from your Eodin Growth service config\n");
         draft.eodinGrowth = { token: await askSecret("Eodin Growth token", KEYCHAIN_KEYS.eodinGrowthToken) };
         break;
       case "asoMobile":
+        console.log("  Get your API key from https://asomobile.net > Settings > API\n");
         draft.asoMobile = { apiKey: await askSecret("ASOMobile API key", KEYCHAIN_KEYS.asoMobileApiKey) };
         break;
       case "youtube":
+        console.log("  1. Go to https://console.cloud.google.com > APIs & Services > Credentials");
+        console.log("  2. Create an API key (or use existing)");
+        console.log("  3. Enable 'YouTube Data API v3' in the API library\n");
         draft.youtube = { apiKey: await askSecret("YouTube API key", KEYCHAIN_KEYS.youtubeApiKey) };
         break;
       case "ardenTts":
+        console.log("  Enter the base URL of your Arden TTS service endpoint\n");
         draft.ardenTts = await askArdenTts();
         break;
     }
