@@ -60,6 +60,11 @@ adaria-ai adds this as a first-class mode via Claude tool use (MCP).
    init` on any macOS box reaches a running state in under 5 minutes.
 5. **Safe cutover.** Parallel run during M7, 1-minute launchctl rollback
    path during M8, no data loss.
+6. **Multi-platform social publishing.** Claude generates platform-optimised
+   marketing content (text + hashtags + image selection) and posts via
+   approval-gated write paths to Twitter/X, Facebook, Threads, TikTok,
+   YouTube Community, and LinkedIn. Reference implementation patterns from
+   `~/Github/linkgo/ai-service/src/social/` (Python → TypeScript port).
 
 ### Non-goals (v0.1.0)
 
@@ -75,6 +80,9 @@ adaria-ai adds this as a first-class mode via Claude tool use (MCP).
   tool implementations are ported.
 - **No third-party MCP servers.** Google Ads / Search Console / Apple Search
   Ads MCP servers are deferred to Phase 2.
+- **No automatic scheduling of social posts.** Posts are generated on
+  demand (`@adaria-ai social fridgify`) or as part of the weekly briefing,
+  but always approval-gated. No calendar-based auto-publish queue.
 - **No long-term memory.** Pilot-ai's `~/.pilot/memory/` is not ported in
   v0.1.0. Per-thread session memory still exists.
 
@@ -163,7 +171,7 @@ Separate plists make weekly/daily runs independently reproducible via
 
 ## 6. Functional requirements
 
-### 6.1 Skills (7)
+### 6.1 Skills (8)
 
 Each skill implements `Skill { name, commands[], schedule?, dispatch(ctx, app) }`.
 
@@ -176,6 +184,7 @@ Each skill implements `Skill { name, commands[], schedule?, dispatch(ctx, app) }
 | ShortFormSkill | YouTube Data API | — | ✅ |
 | SdkRequestSkill | Eodin SDK request aggregation | sdk_request | ✅ |
 | ContentSkill (possibly folded into ShortForm) | — | — | ✅ |
+| SocialPublishSkill | Past briefings, app metadata, DB trends | social_publish (6 platforms) | ✅ |
 
 ### 6.2 Collectors (8)
 
@@ -220,6 +229,74 @@ domain gates. Gate types:
 - `metadata_change` — before App Store / Play Store metadata update
 - `review_reply` — before posting a reply to a user review
 - `sdk_request` — before marking an SDK request as handled
+- `social_publish` — before posting to any social media platform
+
+### 6.6 Social publishing (6 platforms, NEW)
+
+`SocialPublishSkill` generates platform-optimised marketing content for
+each app and posts via approval-gated write paths. Reference implementation
+patterns ported from `~/Github/linkgo/ai-service/src/social/` (Python →
+TypeScript).
+
+#### Supported platforms
+
+| Platform | Client file | API / SDK | Auth method |
+|----------|-------------|-----------|-------------|
+| Twitter/X | `src/social/twitter.ts` | Twitter API v2 (post) + v1.1 (media upload) | OAuth 1.0a (API key + access token) |
+| Facebook | `src/social/facebook.ts` | Facebook Graph API v19.0 | Page Access Token + `appsecret_proof` |
+| Threads | `src/social/threads.ts` | Threads API (Meta Graph API) | Long-lived user token |
+| TikTok | `src/social/tiktok.ts` | TikTok Content Posting API | OAuth 2.0 (client credentials + user token) |
+| YouTube | `src/social/youtube.ts` | YouTube Data API v3 (community posts) | OAuth 2.0 (service account or user token) |
+| LinkedIn | `src/social/linkedin.ts` | LinkedIn REST API v2 | OAuth 2.0 (access token + refresh) |
+
+#### Flow
+
+1. `@adaria-ai social fridgify` or weekly orchestrator triggers
+   `SocialPublishSkill.dispatch(ctx, app)`
+2. Skill reads recent briefing data (ASO highlights, review trends, blog
+   posts) from DB to build context
+3. Claude generates platform-specific content (respecting character limits,
+   hashtag conventions, tone per platform) using `prompts/social-publish.md`
+4. Skill produces `ApprovalItem[]` — one per platform, each showing the
+   draft text + target platform
+5. Approval buttons in Slack → approver clicks → `social_publish` gate
+   fires → platform client posts
+6. Result (post ID, URL) written to `social_posts` DB table + audit log
+
+#### Platform-specific constraints
+
+| Platform | Max text | Image support | Link preview |
+|----------|----------|---------------|--------------|
+| Twitter/X | 280 chars | Yes (media upload API v1.1) | Auto from URL |
+| Facebook | 63,206 chars | Yes (photo upload) | Auto from link |
+| Threads | 500 chars | Yes (image container) | No |
+| TikTok | 2,200 chars (caption) | Video/image required | No |
+| YouTube | 5,000 chars (community) | Yes (image post) | Auto |
+| LinkedIn | 3,000 chars | Yes (image upload) | Auto from URL |
+
+#### Config
+
+Social platform credentials are stored in `~/.adaria/config.yaml` under
+`social:` namespace, with secrets in macOS Keychain (same pattern as
+collector credentials). Per-app platform enablement is in `apps.yaml`:
+
+```yaml
+# apps.yaml
+fridgify:
+  social:
+    twitter: true
+    facebook: true
+    threads: true
+    tiktok: false     # no TikTok account yet
+    youtube: true
+    linkedin: true
+```
+
+#### `ADARIA_DRY_RUN=1` behaviour
+
+All platform clients check `ADARIA_DRY_RUN`. When set, they log the
+full request payload that would be sent but do not call the API. This is
+essential for M7 parallel run safety.
 
 Each gate:
 1. Skill produces a draft + context (what, why, risk)
@@ -244,6 +321,9 @@ Each gate:
   is written to `~/.adaria/audit.jsonl` with timestamp, user, action, outcome.
 - **Fridgify recipe prompt injection** — re-validated in TypeScript with the
   same escaping + test cases from growth-agent Phase 1.
+- **Social platform tokens** — stored in macOS Keychain, never in config
+  files or npm tarball. Token refresh handled per-platform. `social_publish`
+  approval gate prevents unintended posts.
 
 ### 7.2 Reliability
 
@@ -365,7 +445,8 @@ for the file-by-file provenance.
 - Every Mode A command returns an answer within the latency budget (§7.3)
 - Every Mode B question returns a sensible answer without hallucinating a
   data point that should have come from a tool call
-- At least one approval action (blog publish OR review reply) fires end-to-end
+- At least one approval action (blog publish OR review reply OR social publish) fires end-to-end
+- At least one social post published to a live platform via approval flow
 - Zero PII leaks from Mode B tool output to Slack message bodies
 
 ### 90 days post-cutover
@@ -389,6 +470,11 @@ impact, and mitigation. Top five by concern:
    descriptions forbid pass-through, truncate by default, prompt-guard test
 5. **npm path resolution breaks when globally installed** — mandatory M9
    smoke test on a second Mac
+6. **Social platform API rate limits / token expiry during weekly run** —
+   per-platform rate limiter + token refresh in each client; `DRY_RUN`
+   mode skips API calls entirely
+7. **TikTok Content Posting API requires app review** — may delay TikTok
+   support; other 5 platforms are unblocked
 
 ## 12. Out of scope (revisited for Phase 2+)
 
@@ -401,6 +487,8 @@ impact, and mitigation. Top five by concern:
 - Auto-publish to npm on tag (simple GitHub Actions wiring, post-M9)
 - Agent metrics feedback loop (adjust skill behaviour based on past results)
 - Streaming responses in Slack (Block Kit update in place during long runs)
+- Social post scheduling queue (calendar-based auto-publish)
+- Social analytics dashboard (engagement metrics aggregation)
 
 ---
 
@@ -419,6 +507,8 @@ impact, and mitigation. Top five by concern:
 | 9 | One-time fork from pilot-ai, no upstream-sync routine | 2026-04-12 |
 | 10 | DB: start fresh, no migration from growth-agent.db | initial |
 | 11 | Runtime root: `~/.adaria/` with `ADARIA_HOME` override | 2026-04-12 |
+| 12 | Social publishing: 6 platforms (Twitter, Facebook, Threads, TikTok, YouTube, LinkedIn), TS clients ported from linkgo patterns | 2026-04-12 |
+| 13 | Social publish is approval-gated, no auto-publish | 2026-04-12 |
 
 ## Appendix B — apps in scope at v0.1.0
 

@@ -171,6 +171,88 @@ filter → posts the answer in Slack. No skill run involved.
 against real data, sends the briefing to Slack. Manual trigger of the cron
 plist via `launchctl kickstart` produces the same briefing.
 
+## M6.5 — Social publishing (~3 days)
+
+**Goal:** `@adaria-ai social fridgify` generates platform-optimised marketing
+content and posts to 6 social platforms via approval-gated write paths.
+
+Reference implementation: `~/Github/linkgo/ai-service/src/social/` (Python
+clients for Twitter, Facebook, LinkedIn). Ported to TypeScript with the
+same API patterns. Threads, TikTok, YouTube Community are new.
+
+### Phase 1: Platform clients (~1.5 days)
+
+- Write `src/social/base.ts` — shared `SocialClient` interface:
+  `post(content) → SocialPostResult`, `validateContent(text) → ValidationResult`,
+  `uploadMedia(url) → mediaId`, `deletePost(id)`. All clients implement this.
+  Every `post()` method checks `ADARIA_DRY_RUN` before calling the API.
+- Write `src/social/twitter.ts` — Twitter API v2 (create tweet) + v1.1
+  (media upload). Port from linkgo's `twitter_client.py` (uses `tweepy`
+  equivalent). 280-char validation. OAuth 1.0a headers.
+- Write `src/social/facebook.ts` — Facebook Graph API v19.0. Port from
+  linkgo's `facebook_client.py`. Page Access Token + `appsecret_proof`.
+  Photo upload to `/{pageId}/photos`.
+- Write `src/social/threads.ts` — Meta Threads API. Image container
+  creation → publish. 500-char limit.
+- Write `src/social/tiktok.ts` — TikTok Content Posting API. OAuth 2.0.
+  Video/image required. May be blocked by app review — implement client
+  anyway, gate via `apps.yaml` feature flag.
+- Write `src/social/youtube.ts` — YouTube Data API v3 community posts.
+  Image upload support. 5,000-char limit.
+- Write `src/social/linkedin.ts` — LinkedIn REST API v2. Port from
+  linkgo's `linkedin_client.py`. Organization posts + image upload
+  (3-step: initialize → PUT binary → attach URN). 3,000-char limit.
+- Write `src/social/factory.ts` — `createSocialClient(platform, config)`
+  factory returning the correct client.
+
+### Phase 2: Skill + config + DB (~1 day)
+
+- Extend `src/config/schema.ts` — add `socialConfigSchema` with per-platform
+  credential blocks under `social:` namespace. Secrets via Keychain.
+- Extend `src/cli/init.ts` — social platform credential wizard (6 y/n
+  gated blocks, same pattern as collector credentials).
+- Add `social_posts` table to `src/db/schema.ts` — columns: id, app,
+  platform, post_id, post_url, content, posted_at, status.
+  Add matching queries to `queries.ts`.
+- Extend `apps.yaml` schema (`src/config/apps-schema.ts`) — per-app
+  `social: { twitter: bool, facebook: bool, ... }` feature flags.
+- Write `src/skills/social-publish.ts`:
+  - Reads recent briefing data from DB (ASO highlights, review trends,
+    blog posts) to build Claude context
+  - Calls `ctx.runClaude()` with `prompts/social-publish.md` — generates
+    platform-specific content in one pass (Claude returns JSON with
+    per-platform text + hashtags)
+  - Produces `ApprovalItem[]` — one per enabled platform
+  - On approval: `SocialClient.post()` → write result to `social_posts` table
+- Write `prompts/social-publish.md` — template instructing Claude to
+  generate content per platform with character limits, hashtag conventions,
+  tone guidelines, and the app's marketing context.
+- Add `social_publish` gate to `src/agent/safety.ts`.
+- Register `SocialPublishSkill` in `src/skills/index.ts` with commands
+  `["social", "소셜", "sns"]`.
+
+### Phase 3: Tests (~0.5 day)
+
+- Write `tests/social/twitter.test.ts` — mock HTTP, char validation,
+  DRY_RUN behaviour, media upload flow.
+- Write `tests/social/facebook.test.ts` — appsecret_proof, page token.
+- Write `tests/social/threads.test.ts` — container create → publish flow.
+- Write `tests/social/tiktok.test.ts` — OAuth flow, video requirement.
+- Write `tests/social/youtube.test.ts` — community post creation.
+- Write `tests/social/linkedin.test.ts` — 3-step image upload, org post.
+- Write `tests/skills/social-publish.test.ts` — dispatch, approval items,
+  DRY_RUN, per-platform enable/disable, content generation mock.
+- Write `scripts/smoke-social.ts` — manual smoke test posting to each
+  platform (uses real credentials from dev profile).
+
+**Exit criteria:**
+- `@adaria-ai social fridgify` generates content for all enabled platforms
+  and presents approval buttons in Slack.
+- Approve → post appears on the target platform (verified for at least
+  Twitter + one other platform).
+- `ADARIA_DRY_RUN=1` logs the payload without posting.
+- `social_posts` table records every successful post.
+
 ## M7 — Parity + cutover prep (~1 day)
 
 **Goal:** adaria-ai matches growth-agent's current capability. Cut over is safe.
@@ -235,7 +317,7 @@ beyond `adaria-ai init`.
 
 ---
 
-## Estimated total: ~10 focused developer days
+## Estimated total: ~13 focused developer days
 
 Not counting:
 - Calendar slippage (expect ~2x)
@@ -258,3 +340,6 @@ Not counting:
 | Two daemons sharing `~/.claude` auth state — one side runs `/login` and invalidates the other | Low | Hours | Document in M7 runbook: no `/login` during parallel week. `adaria-ai doctor` warns if claude auth was touched within last 24h |
 | Mode B MCP tool enables Claude to leak raw review text / PII to Slack when it should summarise | Medium | Hours | M5.5 tool descriptions explicitly forbid pass-through of row data; `db-query.ts` truncates + flags sensitive columns; prompt-guard test case |
 | npm package path resolution breaks when installed globally (cwd vs `__dirname`) | Medium | Hours | M9 smoke test on a second Mac is mandatory, not optional. `paths.ts` is the single source of truth for any bundled asset path |
+| Social platform API rate limits or token expiry during weekly run | Medium | Hours | Per-platform rate limiter in each client; token refresh logic ported from linkgo; `DRY_RUN` skips API calls |
+| TikTok Content Posting API requires app review before production access | High | Days–Weeks | Implement client anyway; gate behind `apps.yaml` feature flag; other 5 platforms ship independently |
+| Social token refresh fails silently, posts start failing | Medium | Hours | `doctor.ts` checks social token validity; each client logs refresh attempts to audit log; Slack alert on repeated failure |

@@ -99,6 +99,16 @@ adaria-ai/
 │   │   ├── youtube.ts
 │   │   └── arden-tts.ts
 │   │
+│   ├── social/               # NEW — social media platform clients (M6.5)
+│   │   ├── base.ts           # SocialClient interface + SocialPostResult type
+│   │   ├── twitter.ts        # Twitter API v2 + v1.1 media (ported from linkgo)
+│   │   ├── facebook.ts       # Facebook Graph API v19.0 (ported from linkgo)
+│   │   ├── threads.ts        # Meta Threads API
+│   │   ├── tiktok.ts         # TikTok Content Posting API
+│   │   ├── youtube.ts        # YouTube Data API v3 community posts
+│   │   ├── linkedin.ts       # LinkedIn REST API v2 (ported from linkgo)
+│   │   └── factory.ts        # createSocialClient(platform, config)
+│   │
 │   ├── skills/               # NEW concept — growth-agent's agents become skills
 │   │   ├── index.ts          # skill registry + dispatch by command name
 │   │   ├── aso.ts            # port of src/agents/aso-agent.js
@@ -107,7 +117,8 @@ adaria-ai/
 │   │   ├── seo-blog.ts       # port of src/agents/seo-blog-agent.js (w/ Fridgify branch)
 │   │   ├── short-form.ts     # port of src/agents/short-form-agent.js
 │   │   ├── sdk-request.ts    # port of src/agents/sdk-request-agent.js
-│   │   └── content.ts        # port of src/agents/content-agent.js (if distinct)
+│   │   ├── content.ts        # port of src/agents/content-agent.js (if distinct)
+│   │   └── social-publish.ts # NEW — multi-platform social publishing (M6.5)
 │   │
 │   ├── orchestrator/
 │   │   ├── weekly.ts         # port of src/orchestrator.js — runs all skills for all apps
@@ -131,15 +142,24 @@ adaria-ai/
 │   ├── review-sentiment.md
 │   ├── seo-blog.md
 │   ├── seo-blog-fridgify-recipe.md
-│   └── short-form-ideas.md
+│   ├── short-form-ideas.md
+│   └── social-publish.md    # NEW — multi-platform content generation (M6.5)
 │
 ├── tests/
 │   ├── agent/
 │   │   └── claude.test.ts
+│   ├── social/               # NEW — platform client tests (M6.5)
+│   │   ├── twitter.test.ts
+│   │   ├── facebook.test.ts
+│   │   ├── threads.test.ts
+│   │   ├── tiktok.test.ts
+│   │   ├── youtube.test.ts
+│   │   └── linkedin.test.ts
 │   ├── skills/
 │   │   ├── aso.test.ts
 │   │   ├── review.test.ts
-│   │   └── seo-blog.test.ts
+│   │   ├── seo-blog.test.ts
+│   │   └── social-publish.test.ts  # NEW (M6.5)
 │   ├── collectors/
 │   │   └── ... (port existing)
 │   ├── config/

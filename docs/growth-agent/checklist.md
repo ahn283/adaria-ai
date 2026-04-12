@@ -234,31 +234,131 @@ CI) are listed at the end.
 
 ## M6 — Orchestrators (~1 day)
 
-**Goal:** weekly + daily analyses runnable end-to-end.
+**Goal:** weekly + daily analyses runnable end-to-end. SocialPublishSkill included in weekly dispatch.
 
-- [ ] Port `src/orchestrator/weekly.ts`:
-  - [ ] Iterate active apps
-  - [ ] Dispatch weekly skills in parallel (per app)
-  - [ ] Assemble `WeeklyReport`
-  - [ ] Send Block Kit briefing to configured channel
-  - [ ] Aggregate approvals into one message
-- [ ] Port `src/orchestrator/monitor.ts`:
-  - [ ] Threshold checks (rating drop, ranking drop, conversion drop)
-  - [ ] Fire alerts on breach
-- [ ] Port `src/orchestrator/dashboard.ts` — cross-app comparison
-- [ ] Write `src/cli/analyze.ts` — one-shot CLI entry: load config → init DB → init collectors → call orchestrator → exit
-- [ ] Write `src/cli/monitor.ts` — one-shot CLI entry: same pattern
-- [ ] Write `launchd/com.adaria-ai.weekly.plist.template` (Sun 23:00 UTC)
-- [ ] Write `launchd/com.adaria-ai.monitor.plist.template` (Daily 23:00 UTC)
-- [ ] Update `adaria-ai start` to install all three plists
-- [ ] Update `adaria-ai stop` to unload all three
-- [ ] Update `adaria-ai status` to check all three labels
+- [x] Port `src/orchestrator/weekly.ts`:
+  - [x] Iterate active apps
+  - [x] Dispatch weekly skills in parallel (per app, wave 1 + wave 2)
+  - [x] Assemble `WeeklyReport`
+  - [x] Send mrkdwn briefing to configured channel
+  - [x] Aggregate approvals into approval messages
+- [x] Port `src/orchestrator/monitor.ts`:
+  - [x] 6 threshold checks (keyword rank, review sentiment, 1-star, funnel conversion, SEO, web traffic)
+  - [x] Fire alerts on breach
+- [x] Port `src/orchestrator/dashboard.ts` — cross-app comparison
+- [x] Write `src/orchestrator/types.ts` — WeeklyReport, MonitorAlert, SkippedAgentError, WebMetrics
+- [x] Write `src/cli/analyze.ts` — one-shot CLI entry: load config → init DB → call orchestrator → exit
+- [x] Write `src/cli/monitor-cmd.ts` — one-shot CLI entry: same pattern
+- [x] Write `launchd/com.adaria-ai.weekly.plist.template` (Sun 23:00 UTC, KeepAlive=false)
+- [x] Write `launchd/com.adaria-ai.monitor.plist.template` (Daily 23:00 UTC, KeepAlive=false)
+- [x] Update `adaria-ai start` to install all three plists
+- [x] Update `adaria-ai stop` to unload all three
+- [x] Update `adaria-ai status` to check all three labels
+- [x] Add `thresholdsConfigSchema` to `src/config/schema.ts` (8 threshold values with defaults)
+- [x] Add `weeklyTimeoutMs` to `agentConfigSchema` (15 min default)
+- [x] Register `analyze` and `monitor` commands in `src/index.ts`
 
 **Exit criteria verification:**
 - [ ] `npx adaria-ai analyze` runs full weekly analysis against real data
 - [ ] Weekly briefing appears in Slack
 - [ ] `launchctl kickstart -k gui/$UID/com.adaria-ai.weekly` produces same briefing
 - [ ] `npx adaria-ai monitor` runs and exits without error
+
+## M6.5 — Social publishing (~3 days)
+
+**Goal:** `@adaria-ai social fridgify` generates platform-optimised content and posts to 6 platforms via approval gate.
+
+### Phase 1: Platform clients
+
+- [ ] Write `src/social/base.ts` — `SocialClient` interface + `SocialPostResult` type:
+  - [ ] `post(content)`, `validateContent(text)`, `uploadMedia(url)`, `deletePost(id)`
+  - [ ] `ADARIA_DRY_RUN` check in every `post()` implementation
+- [ ] Write `src/social/twitter.ts` — Twitter API v2 + v1.1 media upload:
+  - [ ] Port from linkgo `twitter_client.py` patterns
+  - [ ] OAuth 1.0a header signing
+  - [ ] 280-char validation + truncation warning
+  - [ ] Image upload via v1.1 `media/upload`
+- [ ] Write `src/social/facebook.ts` — Graph API v19.0:
+  - [ ] Port from linkgo `facebook_client.py` patterns
+  - [ ] Page Access Token + `appsecret_proof` HMAC
+  - [ ] Photo upload to `/{pageId}/photos` (unpublished → attach)
+  - [ ] Token refresh (long-lived token exchange)
+- [ ] Write `src/social/threads.ts` — Meta Threads API:
+  - [ ] Image container creation → publish two-step flow
+  - [ ] 500-char limit validation
+- [ ] Write `src/social/tiktok.ts` — TikTok Content Posting API:
+  - [ ] OAuth 2.0 authentication
+  - [ ] Video/image required enforcement
+  - [ ] Feature-flagged (may be blocked by app review)
+- [ ] Write `src/social/youtube.ts` — YouTube Data API v3:
+  - [ ] Community post creation
+  - [ ] Image upload support
+  - [ ] 5,000-char limit
+- [ ] Write `src/social/linkedin.ts` — LinkedIn REST API v2:
+  - [ ] Port from linkgo `linkedin_client.py` patterns
+  - [ ] Organization post (not personal profile)
+  - [ ] 3-step image upload: initializeUpload → PUT binary → attach URN
+  - [ ] OAuth 2.0 token refresh
+  - [ ] 3,000-char limit
+- [ ] Write `src/social/factory.ts` — `createSocialClient(platform, config)` factory
+
+### Phase 2: Skill + config + DB
+
+- [ ] Extend `src/config/schema.ts` — `socialConfigSchema` with per-platform credential blocks:
+  - [ ] Twitter: apiKey, apiSecret, accessToken, accessTokenSecret
+  - [ ] Facebook: appId, appSecret, accessToken, pageId
+  - [ ] Threads: accessToken, userId
+  - [ ] TikTok: clientKey, clientSecret, accessToken
+  - [ ] YouTube: clientId, clientSecret, refreshToken
+  - [ ] LinkedIn: clientId, clientSecret, accessToken, organizationId
+  - [ ] All secrets stored via Keychain (`KEYCHAIN_KEYS` extended)
+- [ ] Extend `src/cli/init.ts` — social platform credential wizard (6 y/n gated blocks)
+- [ ] Add `social_posts` table to `src/db/schema.ts`:
+  - [ ] Columns: id, app, platform, post_id, post_url, content, image_url, posted_at, status
+  - [ ] Migration v6
+- [ ] Add social post queries to `src/db/queries.ts`:
+  - [ ] `insertSocialPost`, `getSocialPostsByApp`, `getSocialPostsByPlatform`, `updateSocialPostStatus`
+- [ ] Extend `src/config/apps-schema.ts` — per-app `social: { twitter: bool, ... }` flags
+- [ ] Write `src/skills/social-publish.ts`:
+  - [ ] `SocialPublishSkillDeps` with social client factory + DB
+  - [ ] Reads recent briefing data from `agent_metrics` for context
+  - [ ] Calls `ctx.runClaude()` with `prompts/social-publish.md`
+  - [ ] Parses Claude JSON output → per-platform content
+  - [ ] Produces `ApprovalItem[]` — one per enabled platform
+  - [ ] On approval callback: `client.post()` → write to `social_posts` table
+  - [ ] `ADARIA_DRY_RUN` respected
+- [ ] Write `prompts/social-publish.md`:
+  - [ ] Platform-specific character limits and formatting rules
+  - [ ] Hashtag conventions per platform
+  - [ ] Tone guidelines (professional for LinkedIn, casual for Twitter/Threads)
+  - [ ] Output format: JSON array with `{ platform, text, hashtags, suggestedImageQuery }`
+- [ ] Add `social_publish` gate to `src/agent/safety.ts`
+- [ ] Register `SocialPublishSkill` in `src/skills/index.ts`:
+  - [ ] Commands: `["social", "소셜", "sns"]`
+  - [ ] `schedule: "weekly"` for orchestrator inclusion
+
+### Phase 3: Tests
+
+- [ ] Write `tests/social/twitter.test.ts` — mock HTTP, char validation, DRY_RUN, media upload
+- [ ] Write `tests/social/facebook.test.ts` — appsecret_proof, page token, photo upload
+- [ ] Write `tests/social/threads.test.ts` — container create → publish flow
+- [ ] Write `tests/social/tiktok.test.ts` — OAuth flow, video/image requirement
+- [ ] Write `tests/social/youtube.test.ts` — community post creation
+- [ ] Write `tests/social/linkedin.test.ts` — 3-step image upload, org post
+- [ ] Write `tests/skills/social-publish.test.ts`:
+  - [ ] Dispatch with/without app name
+  - [ ] Approval item generation per enabled platform
+  - [ ] DRY_RUN skips API calls
+  - [ ] Platform disable in apps.yaml → no approval item for that platform
+  - [ ] Claude error isolation
+- [ ] Write `scripts/smoke-social.ts` — manual smoke test (real credentials, dev profile)
+
+**Exit criteria verification:**
+- [ ] `@adaria-ai social fridgify` generates content for all enabled platforms with approval buttons
+- [ ] Approve → post appears on target platform (at least Twitter + one other verified)
+- [ ] `ADARIA_DRY_RUN=1` logs payload without posting
+- [ ] `social_posts` table records every successful post
+- [ ] All social tests pass (`npm test`)
 
 ## M7 — Parity + cutover prep (~1 day)
 
@@ -378,10 +478,12 @@ CI) are listed at the end.
 
 - [x] Every collector has a unit test (M2) — 8/8 collectors, 76 dedicated tests across 8 files
 - [x] Every skill has a unit test (M4, M5) — 7/7 skills: aso 15, review 6, onboarding 5, seo-blog 7, short-form 3, sdk-request 4, content 3 = 43 skill tests total
+- [ ] SocialPublishSkill has unit tests (M6.5)
+- [ ] Every social platform client has a unit test with DRY_RUN verification (M6.5)
 - [x] Every MCP tool has a unit test with whitelist rejection case (M5.5) — db-query 9, collector-fetch 4, skill-result 3, app-info 4 = 20 tool tests
 - [ ] `prompt-guard.ts` has injection test cases covering Fridgify recipe + Mode B tool descriptions
 - [x] DB migration smoke test runs in CI (M3) — `tests/db/schema.test.ts` (15 tests) + `tests/db/queries.test.ts` (26 tests), 41 total
-- [ ] Orchestrator integration test with mocked collectors (M6)
+- [x] Orchestrator integration test with mocked collectors (M6) — weekly 8 tests, monitor 6 tests, dashboard 3 tests = 17 total
 
 ### Documentation
 
@@ -397,6 +499,9 @@ CI) are listed at the end.
 - [ ] Prompt-guard covers Fridgify recipe injection (M5)
 - [ ] MCP tools are read-only and whitelisted (M5.5)
 - [x] No secrets in npm tarball (M9 `tar -tzf` inspection) — `check:tarball-secrets` runs in `prepublishOnly`, scans 7 credential patterns (Slack/Anthropic/Google/OpenAI/GitHub/PEM), blocks publish on match. Also `src/` removed from `files` field (dist-only tarball, 195 files).
+- [ ] Social platform tokens stored in Keychain, not config files (M6.5)
+- [ ] `social_publish` approval gate prevents unintended posts (M6.5)
+- [ ] `ADARIA_DRY_RUN=1` respected by all 6 social platform clients (M6.5)
 - [ ] Audit log captures every Claude invocation, skill dispatch, approval action
 
 ### CI / automation (post-M9, not blocking)
@@ -426,8 +531,9 @@ CI) are listed at the end.
 | M4 ASO skill | 1.5 | 🟨 | 2026-04-12 | — (AsoSkill + prompt loader + skill interface upgrade landed; Block Kit formatting + snapshot script deferred) |
 | M5 Remaining skills | 2.0 | 🟨 | 2026-04-12 | — (6 skills + 8 prompts + 28 tests landed; approval gate wiring deferred to M6) |
 | M5.5 Mode B tools | 0.5 | 🟨 | 2026-04-12 | — (4 tools + tool host + wiring landed; prompt-injection test + integration test + doctor update deferred) |
-| M6 Orchestrators | 1.0 | ⬜ | — | — |
+| M6 Orchestrators | 1.0 | 🟨 | 2026-04-12 | — (code + tests landed; pending manual verify: Slack briefing + launchctl kickstart) |
+| M6.5 Social publishing | 3.0 | ⬜ | — | — |
 | M7 Parity + parallel | 1.0 | ⬜ | — | — |
 | M8 Cutover | 0.5 | ⬜ | — | — |
 | M9 npm publish | 0.5 | ⬜ | — | — |
-| **Total** | **~10** | | | |
+| **Total** | **~13** | | | |
