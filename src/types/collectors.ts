@@ -128,6 +128,84 @@ export interface AsoKeywordSuggestion {
   competition: number | null;
 }
 
+// ---------------------------------------------------------------------------
+// Eodin Blog / SEO / Analytics
+// ---------------------------------------------------------------------------
+
+export type BlogCategory =
+  | "Philosophy"
+  | "Product"
+  | "Technology"
+  | "Insights"
+  | "Ethics"
+  | "Design";
+
+export type BlogStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
+
+export interface BlogPostDraft {
+  slug: string;
+  title: string;
+  description: string;
+  category: BlogCategory;
+  content: string;
+  thumbnail?: string;
+  readTime?: string;
+}
+
+export interface BlogPostUpdate {
+  title?: string;
+  description?: string;
+  category?: BlogCategory;
+  content?: string;
+  thumbnail?: string;
+  readTime?: string;
+  status?: BlogStatus;
+}
+
+export interface BlogListOptions {
+  status?: BlogStatus;
+  category?: BlogCategory;
+  page?: number;
+  limit?: number;
+}
+
+export interface BlogListResponse {
+  data: { slug: string; title?: string; status?: BlogStatus }[];
+  pagination?: { page: number; limit: number; total?: number };
+}
+
+// ---------------------------------------------------------------------------
+// Fridgify recipes
+// ---------------------------------------------------------------------------
+
+export type FridgifyPeriod = "week" | "month" | "quarter" | "year";
+export type FridgifyPopularMetric = "likes" | "comments" | "combined";
+
+/**
+ * Minimal shape for a Fridgify popular recipe. The upstream API returns a
+ * richer object (ingredients, instructions, `aiDescription`, `tasteProfile`,
+ * `imageUrl`, `stats`, `periodScore`, `cuisineTagsData`); we keep the type
+ * loose with an index signature so consumers can access fields that the
+ * M3 DB schema doesn't persist.
+ *
+ * Note that `aiDescription` is upstream-generated text that an M4 `SeoBlogSkill`
+ * will fold into Claude prompts — the same prompt-guard requirement as
+ * `AsoCompetitorInfo.description` applies there.
+ */
+export interface FridgifyRecipe {
+  id: string;
+  name?: string;
+  periodScore?: number;
+  [key: string]: unknown;
+}
+
+export interface FridgifyCascadeResult {
+  period: FridgifyPeriod;
+  rows: FridgifyRecipe[];
+  /** True only if `rows.length >= minResults` for the chosen window. */
+  satisfied: boolean;
+}
+
 export interface AsoCompetitorInfo {
   title: string;
   subtitle: string;
