@@ -1,6 +1,6 @@
 {
   "name": "adaria-ai",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Single-user marketing operations agent for the Adaria.ai app portfolio, running as a macOS launchd daemon with Slack interface",
   "type": "module",
   "bin": {
@@ -46,7 +46,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ahnwoojin/adaria-ai.git"
+    "url": "https://github.com/ahn283/adaria-ai.git"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

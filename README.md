@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/ahnwoojin/adaria-ai/main/assets/logo.png" alt="adaria.ai" width="420" />
+  <img src="https://raw.githubusercontent.com/ahn283/adaria-ai/main/assets/logo.png" alt="adaria.ai" width="420" />
 </p>
 
 <p align="center">
@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/adaria-ai"><img src="https://img.shields.io/npm/v/adaria-ai.svg" alt="npm version" /></a>
-  <a href="https://github.com/ahnwoojin/adaria-ai/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/adaria-ai.svg" alt="license" /></a>
+  <a href="https://github.com/ahn283/adaria-ai/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/adaria-ai.svg" alt="license" /></a>
   <img src="https://img.shields.io/node/v/adaria-ai.svg" alt="node version" />
   <img src="https://img.shields.io/badge/platform-macOS-blue.svg" alt="platform" />
 </p>
