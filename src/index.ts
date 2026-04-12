@@ -21,13 +21,16 @@ program
   .version(pkg.version);
 
 program
-  .command("init")
-  .description("Interactive setup wizard")
-  .action(async () => {
+  .command("init [section]")
+  .description("Interactive setup wizard (sections: slack, collectors, social)")
+  .action(async (section?: string) => {
     const { runInit } = await import("./cli/init.js");
-    await runInit();
-    // Inquirer leaves readline handles open; force exit so launchd users
-    // don't see a dangling process after init finishes.
+    const validSections = ["slack", "collectors", "social"];
+    if (section && !validSections.includes(section)) {
+      console.error(`Unknown section: ${section}. Valid: ${validSections.join(", ")}`);
+      process.exit(1);
+    }
+    await runInit(section as "slack" | "collectors" | "social" | undefined);
     process.exit(0);
   });
 
