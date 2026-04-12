@@ -490,10 +490,10 @@ CI) are listed at the end.
 ### Documentation
 
 - [x] `README.md` at repo root — install, usage, contributing (started M2; "Profiles and safety" section landed)
-- [x] `docs/ARCHITECTURE.md` — system diagram, data flow (M7)
-- [x] `docs/SETUP.md` — install + init + troubleshooting (M7)
-- [x] `docs/SKILLS.md` — skill authoring guide (M7)
-- [x] `docs/PORTING-LOG.md` — living log of port surprises (M1–M7)
+- [x] `docs/guide/ARCHITECTURE.md` — system diagram, data flow (M7)
+- [x] `docs/guide/SETUP.md` — install + init + troubleshooting (M7)
+- [x] `docs/guide/SKILLS.md` — skill authoring guide (M7)
+- [x] `docs/guide/PORTING-LOG.md` — living log of port surprises (M1–M7)
 
 ### Security
 
