@@ -148,12 +148,12 @@ CI) are listed at the end.
 
 **Goal:** SQLite initialized, apps.yaml loaded, typed queries.
 
-- [ ] Port `src/db/schema.ts` with 8+ tables (keyword_rankings, sdk_events, reviews, approvals, competitor_metadata, agent_metrics, seo_metrics, web_traffic, blog_performance, short_form_performance)
-- [ ] Port `src/db/queries.ts` with typed prepared statements
-- [ ] Port `src/config/load-config.ts`
+- [x] Port `src/db/schema.ts` with 11 tables (keyword_rankings, sdk_events, reviews, approvals, competitor_metadata, agent_metrics, blog_posts, short_form_performance, seo_metrics, web_traffic, blog_performance) + schema_version. 5 migrations, WAL mode, `fs.mkdirSync` parent dir guarantee. Review H1/H2/M3/M4 addressed.
+- [x] Port `src/db/queries.ts` with typed prepared statements — 40+ query helpers, 17 row type interfaces, WeakMap statement cache. `AgentTrendRow` separated per review H2. `insertBlogPost` `published_at` parameterized per review M3. `insertCompetitorMetadata` preserves `null` keywords per review M4.
+- [x] Port `src/config/load-config.ts` — already superseded by `src/config/store.ts` (zod-based validation + keychain resolution, landed in M1). No separate port needed.
 - [x] Port `src/config/load-apps.ts` (pulled forward from M3 into M2 finisher v2; zod schema in `apps-schema.ts`, loader in `load-apps.ts`, 8 tests)
-- [ ] Set DB path via `paths.ts` to `$ADARIA_HOME/data/adaria.db`
-- [ ] Write `tests/db/migration-smoke.test.ts` — fresh DB, run v1-v5 migrations, read every table
+- [x] Set DB path via `paths.ts` to `$ADARIA_HOME/data/adaria.db` (already resolved in M0; `initDatabase` now ensures parent dir exists)
+- [x] Write `tests/db/schema.test.ts` + `tests/db/queries.test.ts` — 41 tests: fresh DB migration, all 11 tables verified, constraint checks (platform, rating, unique, agent types), idempotent re-open, all query helpers exercised with insert/upsert/retrieve/update coverage
 - [x] Copy growth-agent's `apps.yaml` → `apps.example.yaml` (root) (M2 finisher v2; camelCase fields, 3 sample apps)
 - [x] Verify loader against `apps.example.yaml` (verified via `ADARIA_HOME=/tmp/... npm run smoke:collectors` — parsed all 3 apps, Fridgify recipes live API returned data)
 
@@ -384,7 +384,7 @@ CI) are listed at the end.
 - [ ] Every skill has a unit test (M4, M5)
 - [ ] Every MCP tool has a unit test with whitelist rejection case (M5.5)
 - [ ] `prompt-guard.ts` has injection test cases covering Fridgify recipe + Mode B tool descriptions
-- [ ] DB migration smoke test runs in CI (M3)
+- [x] DB migration smoke test runs in CI (M3) — `tests/db/schema.test.ts` (15 tests) + `tests/db/queries.test.ts` (26 tests), 41 total
 - [ ] Orchestrator integration test with mocked collectors (M6)
 
 ### Documentation
@@ -426,7 +426,7 @@ CI) are listed at the end.
 | M0 Bootstrap | 0.5 | ✅ | 2026-04-12 | 2026-04-12 |
 | M1 Runtime import | 1.5 | 🟨 | 2026-04-12 | — (code + tests landed; awaiting manual Slack smoke test per exit-criteria section) |
 | M2 Collectors | 1.0 | 🟨 | 2026-04-12 | — (all 8 collectors ported + smoke script; last item is manual smoke run against live creds) |
-| M3 DB + config | 0.5 | ⬜ | — | — |
+| M3 DB + config | 0.5 | 🟨 | 2026-04-12 | — (schema + queries + tests landed; exit criteria `doctor` DB check deferred to M4 wiring) |
 | M4 ASO skill | 1.5 | ⬜ | — | — |
 | M5 Remaining skills | 2.0 | ⬜ | — | — |
 | M5.5 Mode B tools | 0.5 | ⬜ | — | — |
