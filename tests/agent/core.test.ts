@@ -202,7 +202,7 @@ describe("AgentCore.handleMessage", () => {
       registry.register({
         name: "custom",
         commands: ["custom"],
-        dispatch: () => Promise.resolve("custom skill result"),
+        dispatch: () => Promise.resolve({ summary: "custom skill result", alerts: [], approvals: [] }),
       });
       new AgentCore(messenger, buildConfig(), { skillRegistry: registry });
 

@@ -5,16 +5,15 @@
  * explicit Slack commands (Mode A). Skills are heavy, may gate write paths
  * through `ApprovalManager`, and are NOT exposed as MCP tools.
  *
- * M1 ships this registry with a set of placeholder skills so that
- * `core.handleMessage` can plumb Mode A dispatch end-to-end and return a
- * `(skill not implemented)` message for each known command word. M4 begins
- * replacing placeholders with real skill classes (`AsoSkill`, `ReviewSkill`,
- * etc.) in `src/skills/<name>.ts`; M5 finishes that transition and the
- * `createM1PlaceholderRegistry()` helper goes away.
+ * M4 upgraded the Skill interface from `dispatch(text)` → `dispatch(ctx, text)`
+ * with a `SkillResult` return type. PlaceholderSkill still exists for
+ * skills not yet ported (M5 will remove it).
  */
 
+import type { SkillContext, SkillResult } from "../types/skill.js";
+
 export interface Skill {
-  /** Human-readable name (used in logs and placeholder responses). */
+  /** Human-readable name (used in logs and Slack messages). */
   readonly name: string;
   /**
    * Command words that trigger this skill when they appear as the first
@@ -22,10 +21,11 @@ export interface Skill {
    */
   readonly commands: readonly string[];
   /**
-   * Executes the skill. M4/M5 will thread a richer `SkillContext` through
-   * here; for M1 placeholders the raw message text is enough.
+   * Executes the skill with the shared context and the raw message text.
+   * The skill is responsible for parsing the app name from `text` and
+   * looking it up in `ctx.apps`.
    */
-  dispatch(text: string): Promise<string>;
+  dispatch(ctx: SkillContext, text: string): Promise<SkillResult>;
 }
 
 export class SkillRegistry {
@@ -70,14 +70,23 @@ export class SkillRegistry {
   }
 }
 
-class PlaceholderSkill implements Skill {
+/**
+ * Placeholder skill for commands not yet ported. Returns a clear
+ * "not implemented" message so the operator can verify Mode A plumbing.
+ * M5 removes this once all skills are real.
+ */
+export class PlaceholderSkill implements Skill {
   constructor(
     readonly name: string,
     readonly commands: readonly string[],
   ) {}
 
-  dispatch(_text: string): Promise<string> {
-    return Promise.resolve(`(skill not implemented: ${this.name})`);
+  dispatch(_ctx: SkillContext, _text: string): Promise<SkillResult> {
+    return Promise.resolve({
+      summary: `(skill not implemented: ${this.name})`,
+      alerts: [],
+      approvals: [],
+    });
   }
 }
 
@@ -101,4 +110,15 @@ export function createM1PlaceholderRegistry(): SkillRegistry {
   );
   registry.register(new PlaceholderSkill("content", ["content"]));
   return registry;
+}
+
+/**
+ * Parse the app name from the second token of a command string.
+ * Returns `undefined` if no second token is present.
+ *
+ * Example: `"aso fridgify"` → `"fridgify"`
+ */
+export function parseAppNameFromCommand(text: string): string | undefined {
+  const tokens = text.trim().split(/\s+/);
+  return tokens[1]?.toLowerCase();
 }

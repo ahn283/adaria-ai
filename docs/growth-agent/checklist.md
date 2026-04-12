@@ -164,16 +164,21 @@ CI) are listed at the end.
 
 **Goal:** end-to-end proof of the skill pattern.
 
-- [ ] Write `src/skills/index.ts` — skill registry + dispatch logic
-- [ ] Write `src/types/skill.ts` — `Skill`, `SkillContext`, `SkillResult` interfaces
-- [ ] Port `src/skills/aso.ts` from `src/agents/aso-agent.js`:
-  - [ ] Uses AsoMobileCollector + AppStoreCollector via `ctx.collectors`
-  - [ ] Calls `ctx.runner.runClaude()` with the four ASO prompts
-  - [ ] Returns `SkillResult { summary, alerts, approvals }`
-- [ ] Hook into `core.handleMessage`: `@adaria-ai aso fridgify` → dispatch `AsoSkill`
-- [ ] Format Slack response using Block Kit
-- [ ] Write `tests/skills/aso.test.ts` — mock collectors + runner, verify dispatch builds expected prompt inputs
-- [ ] Write `scripts/snapshot-briefing.ts` — JSON dump of skill result for diff-based parity check (used from M4 onward)
+- [x] Upgrade `src/skills/index.ts` — Skill interface from `dispatch(text)` → `dispatch(ctx, text)` returning `SkillResult`. Added `parseAppNameFromCommand`. PlaceholderSkill updated. Review C1/H1 addressed.
+- [x] Write `src/types/skill.ts` — `SkillContext`, `SkillResult`, `SkillAlert`, `ApprovalItem` interfaces
+- [x] Port `src/skills/aso.ts` from `src/agents/aso-agent.js`:
+  - [x] Uses AsoMobileCollector + AppStoreCollector via constructor-injected `AsoSkillDeps`
+  - [x] Calls `ctx.runClaude()` with 3 ASO prompts (metadata, screenshots, in-app events)
+  - [x] Returns `SkillResult { summary, alerts, approvals }` with approval item for metadata proposals
+  - [x] Review C1: description diffs truncated to 200 chars + TODO for M5.5 prompt-guard
+  - [x] Review H1: `runClaude` wrapper in core.ts writes audit log entries
+  - [ ] Review H2: circuit breaker on skill Claude calls — deferred to M6 orchestrator batch
+- [x] Hook into `core.handleMessage`: `@adaria-ai aso fridgify` → dispatch `AsoSkill` via `buildSkillContext()`. Stub context fallback for M1 placeholder path.
+- [ ] Format Slack response using Block Kit — M4 returns mrkdwn summary text. Block Kit formatting deferred to M6 orchestrator (weekly briefing uses Block Kit sections).
+- [x] Write `src/prompts/loader.ts` — template loader with `{{var}}` substitution from bundled prompts/
+- [x] Copy 4 ASO prompt files to `prompts/` (aso-metadata, aso-screenshots, aso-inapp-events, aso-description)
+- [x] Write `tests/skills/aso.test.ts` — 15 tests: dispatch with/without app name, error handling, DB insertion, collector integration, Claude error isolation, approval item generation, platform-specific behavior
+- [ ] Write `scripts/snapshot-briefing.ts` — deferred to M7 parity check (not blocking M4 exit criteria)
 
 **Exit criteria verification:**
 - [ ] `@adaria-ai aso fridgify` returns the same analysis growth-agent produces
@@ -427,7 +432,7 @@ CI) are listed at the end.
 | M1 Runtime import | 1.5 | 🟨 | 2026-04-12 | — (code + tests landed; awaiting manual Slack smoke test per exit-criteria section) |
 | M2 Collectors | 1.0 | 🟨 | 2026-04-12 | — (all 8 collectors ported + smoke script; last item is manual smoke run against live creds) |
 | M3 DB + config | 0.5 | 🟨 | 2026-04-12 | — (schema + queries + tests landed; exit criteria `doctor` DB check deferred to M4 wiring) |
-| M4 ASO skill | 1.5 | ⬜ | — | — |
+| M4 ASO skill | 1.5 | 🟨 | 2026-04-12 | — (AsoSkill + prompt loader + skill interface upgrade landed; Block Kit formatting + snapshot script deferred) |
 | M5 Remaining skills | 2.0 | ⬜ | — | — |
 | M5.5 Mode B tools | 0.5 | ⬜ | — | — |
 | M6 Orchestrators | 1.0 | ⬜ | — | — |

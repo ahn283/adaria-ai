@@ -29,7 +29,10 @@
  */
 
 import crypto from "node:crypto";
+import type Database from "better-sqlite3";
 import type { AdariaConfig } from "../config/schema.js";
+import type { AppConfig } from "../config/apps-schema.js";
+import type { SkillContext } from "../types/skill.js";
 import type {
   IncomingMessage,
   MessengerAdapter,
@@ -78,6 +81,10 @@ const MODE_B_MAX_TURNS = 25;
 export interface AgentCoreOptions {
   mcpManager?: McpManager;
   skillRegistry?: SkillRegistry;
+  /** Initialized SQLite database. Required for Mode A skill dispatch (M4+). */
+  db?: Database.Database;
+  /** Loaded apps from apps.yaml. Required for Mode A skill dispatch (M4+). */
+  apps?: AppConfig[];
 }
 
 export class AgentCore {
@@ -86,6 +93,8 @@ export class AgentCore {
   private readonly approvalManager: ApprovalManager;
   private readonly mcpManager: McpManager;
   private readonly skillRegistry: SkillRegistry;
+  private readonly db: Database.Database | undefined;
+  private readonly apps: AppConfig[];
 
   constructor(
     messenger: MessengerAdapter,
@@ -98,6 +107,8 @@ export class AgentCore {
     this.mcpManager = options.mcpManager ?? new McpManager();
     this.skillRegistry =
       options.skillRegistry ?? createM1PlaceholderRegistry();
+    this.db = options.db;
+    this.apps = options.apps ?? [];
 
     this.setupHandlers();
   }
@@ -205,7 +216,18 @@ export class AgentCore {
         let response: string;
         if (skill) {
           logInfo(`Mode A: dispatching to skill "${skill.name}"`);
-          response = await skill.dispatch(msg.text);
+          const skillCtx = this.buildSkillContext();
+          // When db is not available (M1 placeholder path), pass a
+          // minimal stub context so placeholder skills can still return
+          // their "not implemented" message.
+          const stubCtx: SkillContext = skillCtx ?? {
+            db: undefined as never,
+            apps: [],
+            config: this.config,
+            runClaude: () => Promise.resolve(""),
+          };
+          const result = await skill.dispatch(stubCtx, msg.text);
+          response = result.summary;
         } else {
           logInfo("Mode B: falling through to Claude CLI");
           response = await this.invokeClaudeWithContext(
@@ -512,6 +534,41 @@ export class AgentCore {
     if (toolDescriptions) parts.push(toolDescriptions.slice(0, 1000));
 
     return parts.join("\n\n");
+  }
+
+  /**
+   * Build the SkillContext for Mode A dispatch. Returns `null` if the
+   * database is not initialized (M1 placeholder path — skills still
+   * receive a minimal context with a stub `runClaude`).
+   */
+  private buildSkillContext(): SkillContext | null {
+    if (!this.db) return null;
+
+    return {
+      db: this.db,
+      apps: this.apps,
+      config: this.config,
+      runClaude: async (prompt: string): Promise<string> => {
+        await writeAuditLog({
+          type: "command",
+          userId: "skill",
+          platform: "internal",
+          content: `[skill-claude] ${prompt.slice(0, 200)}`,
+        });
+        const result = await invokeClaudeCli({
+          prompt,
+          cliBinary: this.config.claude.cliBinary,
+          timeoutMs: this.config.claude.timeoutMs,
+        });
+        await writeAuditLog({
+          type: "result",
+          userId: "skill",
+          platform: "internal",
+          content: `[skill-claude] ${result.result.slice(0, 500)}`,
+        });
+        return result.result;
+      },
+    };
   }
 
   private createThinkingHandler(

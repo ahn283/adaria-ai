@@ -2,14 +2,19 @@ import { describe, it, expect } from "vitest";
 import {
   SkillRegistry,
   createM1PlaceholderRegistry,
+  parseAppNameFromCommand,
   type Skill,
 } from "../../src/skills/index.js";
+import type { SkillContext } from "../../src/types/skill.js";
+
+const dummyCtx = {} as SkillContext;
 
 function fakeSkill(name: string, commands: string[]): Skill {
   return {
     name,
     commands,
-    dispatch: (text) => Promise.resolve(`ran ${name} on ${text}`),
+    dispatch: (_ctx, text) =>
+      Promise.resolve({ summary: `ran ${name} on ${text}`, alerts: [], approvals: [] }),
   };
 }
 
@@ -56,16 +61,8 @@ describe("createM1PlaceholderRegistry", () => {
   it("registers all seven placeholder skill command words", () => {
     const reg = createM1PlaceholderRegistry();
     const commands = [
-      "aso",
-      "review",
-      "reviews",
-      "onboarding",
-      "blog",
-      "shortform",
-      "short-form",
-      "sdkrequest",
-      "sdk-request",
-      "content",
+      "aso", "review", "reviews", "onboarding", "blog",
+      "shortform", "short-form", "sdkrequest", "sdk-request", "content",
     ];
     for (const cmd of commands) {
       const skill = reg.findSkill(cmd);
@@ -76,14 +73,26 @@ describe("createM1PlaceholderRegistry", () => {
   it("every placeholder dispatch returns a (skill not implemented) message", async () => {
     const reg = createM1PlaceholderRegistry();
     for (const skill of reg.getSkills()) {
-      const out = await skill.dispatch("test input");
-      expect(out).toMatch(/skill not implemented/);
-      expect(out).toContain(skill.name);
+      const out = await skill.dispatch(dummyCtx, "test input");
+      expect(out.summary).toMatch(/skill not implemented/);
+      expect(out.summary).toContain(skill.name);
     }
   });
 
   it("registers exactly seven placeholder skills", () => {
     const reg = createM1PlaceholderRegistry();
     expect(reg.getSkillCount()).toBe(7);
+  });
+});
+
+describe("parseAppNameFromCommand", () => {
+  it("extracts second token as app name", () => {
+    expect(parseAppNameFromCommand("aso fridgify")).toBe("fridgify");
+    expect(parseAppNameFromCommand("ASO Arden")).toBe("arden");
+  });
+
+  it("returns undefined when no second token", () => {
+    expect(parseAppNameFromCommand("aso")).toBeUndefined();
+    expect(parseAppNameFromCommand("aso  ")).toBeUndefined();
   });
 });
