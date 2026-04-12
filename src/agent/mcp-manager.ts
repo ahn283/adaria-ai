@@ -32,11 +32,16 @@
  */
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 // ADARIA_HOME is an eager const from paths.ts. Tests that need a custom
 // $ADARIA_HOME set `process.env["ADARIA_HOME"]` before `await import()`-ing
 // this module — same convention as session/audit/memory/logger.
 import { ADARIA_HOME } from "../utils/paths.js";
-import type { McpServerConfig } from "./mcp-launcher.js";
+import type { McpServerConfig, ToolHostLaunchSpec } from "./mcp-launcher.js";
+import { buildToolHostServerConfig } from "./mcp-launcher.js";
+
+const thisFile = fileURLToPath(import.meta.url);
+const TOOL_HOST_ENTRY = path.resolve(path.dirname(thisFile), "..", "tools", "tool-host.js");
 
 /** JSON Schema fragment describing an MCP tool's input object. */
 export type McpInputSchema = Record<string, unknown>;
@@ -143,9 +148,16 @@ export class McpManager {
    */
   buildMcpConfig(): McpConfigFile | null {
     if (this.tools.size === 0) return null;
-    // M5.5: populate mcpServers.adaria here once the tool-host entry
-    // point is wired through mcp-launcher.buildToolHostServerConfig.
-    return { mcpServers: {} };
+
+    const spec: ToolHostLaunchSpec = {
+      entryPoint: TOOL_HOST_ENTRY,
+    };
+    if (process.env["ADARIA_HOME"]) {
+      spec.env = { ADARIA_HOME: process.env["ADARIA_HOME"] };
+    }
+    const adariaServer = buildToolHostServerConfig(spec);
+
+    return { mcpServers: { adaria: adariaServer } };
   }
 
   /**

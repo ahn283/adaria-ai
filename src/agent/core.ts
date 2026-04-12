@@ -66,6 +66,10 @@ import {
 } from "../utils/logger.js";
 import { createM1PlaceholderRegistry } from "../skills/index.js";
 import type { SkillRegistry } from "../skills/index.js";
+import { createDbQueryTool } from "../tools/db-query.js";
+import { createCollectorFetchTool } from "../tools/collector-fetch.js";
+import { createSkillResultTool } from "../tools/skill-result.js";
+import { createAppInfoTool } from "../tools/app-info.js";
 
 /**
  * Default Mode B system prompt. M5.5 will extend this to describe the
@@ -109,6 +113,15 @@ export class AgentCore {
       options.skillRegistry ?? createM1PlaceholderRegistry();
     this.db = options.db;
     this.apps = options.apps ?? [];
+
+    // Register MCP tools when DB is available (M5.5+). Without DB,
+    // Mode B still works but has no tools (M1 placeholder behavior).
+    if (this.db) {
+      this.mcpManager.registerTool(createDbQueryTool(this.db));
+      this.mcpManager.registerTool(createCollectorFetchTool(this.db));
+      this.mcpManager.registerTool(createSkillResultTool(this.db));
+      this.mcpManager.registerTool(createAppInfoTool(this.apps));
+    }
 
     this.setupHandlers();
   }
@@ -531,7 +544,7 @@ export class AgentCore {
     if (memoryContext) parts.push(memoryContext.slice(0, 2000));
 
     const toolDescriptions = buildToolDescriptions();
-    if (toolDescriptions) parts.push(toolDescriptions.slice(0, 1000));
+    if (toolDescriptions) parts.push(toolDescriptions);
 
     return parts.join("\n\n");
   }

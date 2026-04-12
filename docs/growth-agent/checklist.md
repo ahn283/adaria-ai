@@ -212,25 +212,20 @@ CI) are listed at the end.
 
 **Goal:** free-form mentions work via MCP tool use.
 
-- [ ] Write `src/tools/db-query.ts`:
-  - [ ] Input schema: `{ table: enum, where?, orderBy?, limit? }`
-  - [ ] Whitelist tables explicitly
-  - [ ] Reject non-whitelisted inputs
-  - [ ] Truncate output at 50 rows / 10KB
-- [ ] Write `src/tools/collector-fetch.ts`:
-  - [ ] Input schema: `{ collector: enum, app: string, fresh?: bool }`
-  - [ ] Cache-aware — return DB row if fresh, otherwise hit API
-- [ ] Write `src/tools/skill-result.ts`:
-  - [ ] Read last-N weekly briefing blobs from DB per app
-- [ ] Write `src/tools/app-info.ts`:
-  - [ ] Read parsed `apps.yaml` metadata
-- [ ] Register all four tools with `mcp-manager.ts`
-- [ ] Write `src/agent/tool-descriptions.ts` — descriptions for the 4 marketing tools
-- [ ] Update `core.ts` Mode B path — pass MCP config to Claude CLI with system prompt ("You are adaria-ai, a marketing analytics assistant... Use tools to answer read questions. Never attempt writes; never guess data you can fetch.")
-- [ ] Write `tests/tools/db-query.test.ts` — rejects non-whitelisted table
-- [ ] Write `tests/tools/prompt-injection.test.ts` — attempts to bypass whitelist via description injection fail
-- [ ] Write `tests/integration/mode-b.test.ts` — scripted mention → tool call → synthesised answer against fixture
-- [ ] Update `doctor.ts` to list registered MCP tools and verify they start
+- [x] Write `src/tools/db-query.ts`: table whitelist (11 tables), column redaction (review body, competitor description), column name regex validation, orderBy validation, 50-row cap, row-based truncation at 10KB. Review H2 fixed (no broken JSON). 9 tests.
+- [x] Write `src/tools/collector-fetch.ts`: 7 collector types, review body redaction, days cap at 90, input validation (H3). 4 tests.
+- [x] Write `src/tools/skill-result.ts`: agent_metrics query, 7 skill types, limit cap at 20, input validation (H3). 3 tests.
+- [x] Write `src/tools/app-info.ts`: list all or single app lookup, case-insensitive. 4 tests.
+- [x] Write `src/tools/tool-host.ts`: stdio JSON-RPC MCP server entry point, spawned by Claude CLI as subprocess. Handles initialize, tools/list, tools/call.
+- [x] Register all four tools with `mcp-manager.ts` via `core.ts` constructor when db is available (review H1).
+- [x] Wire `mcp-manager.ts` `buildMcpConfig` to point at `tool-host.js` via `mcp-launcher.buildToolHostServerConfig`.
+- [x] Write `src/agent/tool-descriptions.ts` — full descriptions for 4 tools + safety rules. Review C1 fixed (`.slice(0, 1000)` removed so "Important rules" section reaches Claude).
+- [x] `core.ts` Mode B path already wired from M1 — MCP config now generated with real tool host when tools are registered.
+- [x] Write `tests/tools/db-query.test.ts` — whitelist rejection, SQL injection prevention, column redaction, limit cap, orderBy validation, empty results. 9 tests.
+- [x] Write `tests/tools/collector-fetch.test.ts` + `skill-result.test.ts` + `app-info.test.ts` — 11 tests total.
+- [ ] Write `tests/tools/prompt-injection.test.ts` — deferred (db-query tests already cover column name injection + whitelist bypass)
+- [ ] Write `tests/integration/mode-b.test.ts` — deferred to M7 (requires live Claude CLI)
+- [ ] Update `doctor.ts` to list registered MCP tools — deferred to M7
 
 **Exit criteria verification:**
 - [ ] `@adaria-ai 이번 주 프리지파이 별점 1점 리뷰 몇 개야?` → Claude calls `db-query` → posts count
@@ -383,7 +378,7 @@ CI) are listed at the end.
 
 - [x] Every collector has a unit test (M2) — 8/8 collectors, 76 dedicated tests across 8 files
 - [x] Every skill has a unit test (M4, M5) — 7/7 skills: aso 15, review 6, onboarding 5, seo-blog 7, short-form 3, sdk-request 4, content 3 = 43 skill tests total
-- [ ] Every MCP tool has a unit test with whitelist rejection case (M5.5)
+- [x] Every MCP tool has a unit test with whitelist rejection case (M5.5) — db-query 9, collector-fetch 4, skill-result 3, app-info 4 = 20 tool tests
 - [ ] `prompt-guard.ts` has injection test cases covering Fridgify recipe + Mode B tool descriptions
 - [x] DB migration smoke test runs in CI (M3) — `tests/db/schema.test.ts` (15 tests) + `tests/db/queries.test.ts` (26 tests), 41 total
 - [ ] Orchestrator integration test with mocked collectors (M6)
@@ -430,7 +425,7 @@ CI) are listed at the end.
 | M3 DB + config | 0.5 | 🟨 | 2026-04-12 | — (schema + queries + tests landed; exit criteria `doctor` DB check deferred to M4 wiring) |
 | M4 ASO skill | 1.5 | 🟨 | 2026-04-12 | — (AsoSkill + prompt loader + skill interface upgrade landed; Block Kit formatting + snapshot script deferred) |
 | M5 Remaining skills | 2.0 | 🟨 | 2026-04-12 | — (6 skills + 8 prompts + 28 tests landed; approval gate wiring deferred to M6) |
-| M5.5 Mode B tools | 0.5 | ⬜ | — | — |
+| M5.5 Mode B tools | 0.5 | 🟨 | 2026-04-12 | — (4 tools + tool host + wiring landed; prompt-injection test + integration test + doctor update deferred) |
 | M6 Orchestrators | 1.0 | ⬜ | — | — |
 | M7 Parity + parallel | 1.0 | ⬜ | — | — |
 | M8 Cutover | 0.5 | ⬜ | — | — |
