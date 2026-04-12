@@ -1,6 +1,6 @@
 {
   "name": "adaria-ai",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Single-user marketing operations agent for the Adaria.ai app portfolio, running as a macOS launchd daemon with Slack interface",
   "type": "module",
   "bin": {
