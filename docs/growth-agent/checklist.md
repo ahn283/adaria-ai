@@ -128,8 +128,20 @@ CI) are listed at the end.
 - [x] Write `scripts/smoke-collectors.ts` — runs via `npm run smoke:collectors` through `tsx`. Loads credentials from `config.yaml.collectors` (init-driven, no env var fallback) and per-app identifiers from `apps.yaml`. Dev profile: `$HOME/.adaria-dev` via `ADARIA_HOME` override.
 - [ ] Run smoke test once manually against real APIs (`npm run init:dev` → `npm run smoke:collectors:dev`; dry run verified Fridgify live API + 7 skip / 0 error)
 
+### Added during M2 (scope extension per user request)
+
+- [x] Extend `config.yaml.collectors` schema with 7 optional credential blocks (all 8 collectors minus Fridgify which is public) — `src/config/schema.ts`
+- [x] Extend `adaria-ai init` wizard to collect all collector credentials (8 y/n gated blocks, secrets via keychain) — `src/cli/init.ts`
+- [x] `KEYCHAIN_KEYS` central constant map to keep init.ts/store.ts slot names in sync — `src/config/schema.ts`
+- [x] `deriveServicePrefix(ADARIA_HOME)` for prod/dev keychain namespace isolation — `src/config/keychain.ts` (7 tests)
+- [x] `npm run init:dev` + `npm run smoke:collectors:dev` convenience scripts
+- [x] `scripts/check-tarball-secrets.ts` pre-publish credential scanner (7 regex patterns, PEM body-required to avoid false positive) — runs in `prepublishOnly`
+- [x] `package.json files` hardened: `src/` removed (dist-only, 195 files); `apps.example.yaml` added
+- [x] `.gitignore` hardened: `/config.yaml`, `/apps.yaml`, `.adaria-*/` all blocked
+- [x] README "Profiles and safety" section
+
 **Exit criteria verification:**
-- [x] `npm test` passes with all collector tests (340 total, 76 dedicated collector tests across 8 files)
+- [x] `npm test` passes with all collector tests (360 total, 76 dedicated collector tests across 8 files)
 - [ ] Smoke test prints non-empty sample for every collector (manual, pending live credentials)
 
 ## M3 — DB + config port (~0.5 day)
@@ -139,11 +151,11 @@ CI) are listed at the end.
 - [ ] Port `src/db/schema.ts` with 8+ tables (keyword_rankings, sdk_events, reviews, approvals, competitor_metadata, agent_metrics, seo_metrics, web_traffic, blog_performance, short_form_performance)
 - [ ] Port `src/db/queries.ts` with typed prepared statements
 - [ ] Port `src/config/load-config.ts`
-- [ ] Port `src/config/load-apps.ts`
+- [x] Port `src/config/load-apps.ts` (pulled forward from M3 into M2 finisher v2; zod schema in `apps-schema.ts`, loader in `load-apps.ts`, 8 tests)
 - [ ] Set DB path via `paths.ts` to `$ADARIA_HOME/data/adaria.db`
 - [ ] Write `tests/db/migration-smoke.test.ts` — fresh DB, run v1-v5 migrations, read every table
-- [ ] Copy growth-agent's `apps.yaml` → `apps.example.yaml` (root)
-- [ ] Verify loader against `apps.example.yaml`
+- [x] Copy growth-agent's `apps.yaml` → `apps.example.yaml` (root) (M2 finisher v2; camelCase fields, 3 sample apps)
+- [x] Verify loader against `apps.example.yaml` (verified via `ADARIA_HOME=/tmp/... npm run smoke:collectors` — parsed all 3 apps, Fridgify recipes live API returned data)
 
 **Exit criteria verification:**
 - [ ] `adaria-ai doctor` reports "DB OK, N apps loaded (Fridgify, Arden, Tempy)"
@@ -368,7 +380,7 @@ CI) are listed at the end.
 
 ### Testing
 
-- [ ] Every collector has a unit test (M2)
+- [x] Every collector has a unit test (M2) — 8/8 collectors, 76 dedicated tests across 8 files
 - [ ] Every skill has a unit test (M4, M5)
 - [ ] Every MCP tool has a unit test with whitelist rejection case (M5.5)
 - [ ] `prompt-guard.ts` has injection test cases covering Fridgify recipe + Mode B tool descriptions
@@ -377,7 +389,7 @@ CI) are listed at the end.
 
 ### Documentation
 
-- [ ] `README.md` at repo root — install, usage, contributing
+- [x] `README.md` at repo root — install, usage, contributing (started M2; "Profiles and safety" section landed)
 - [ ] `docs/ARCHITECTURE.md` — system diagram, data flow (M7)
 - [ ] `docs/SETUP.md` — install + init + troubleshooting (M7)
 - [ ] `docs/SKILLS.md` — skill authoring guide (M7)
@@ -388,7 +400,7 @@ CI) are listed at the end.
 - [ ] Allowlist enforcement verified (M1)
 - [ ] Prompt-guard covers Fridgify recipe injection (M5)
 - [ ] MCP tools are read-only and whitelisted (M5.5)
-- [ ] No secrets in npm tarball (M9 `tar -tzf` inspection)
+- [x] No secrets in npm tarball (M9 `tar -tzf` inspection) — `check:tarball-secrets` runs in `prepublishOnly`, scans 7 credential patterns (Slack/Anthropic/Google/OpenAI/GitHub/PEM), blocks publish on match. Also `src/` removed from `files` field (dist-only tarball, 195 files).
 - [ ] Audit log captures every Claude invocation, skill dispatch, approval action
 
 ### CI / automation (post-M9, not blocking)
@@ -403,7 +415,7 @@ CI) are listed at the end.
 - [ ] `adaria-ai doctor` is the single source of truth for "is the system healthy"
 - [ ] Every error path logs to `~/.adaria/logs/` with enough context to debug from the log alone
 - [ ] Rollback path from M8 is documented in `docs/SETUP.md`
-- [ ] `ADARIA_HOME` override documented for parallel run + testing
+- [x] `ADARIA_HOME` override documented for parallel run + testing — README "Profiles and safety" section covers prod/dev profile, keychain namespace derivation, `init:dev`/`smoke:collectors:dev` scripts
 
 ---
 
