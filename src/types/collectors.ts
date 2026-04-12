@@ -64,3 +64,79 @@ export interface AppStoreLocalizationUpdate {
   keywords?: string;
   description?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Eodin SDK analytics
+// ---------------------------------------------------------------------------
+
+/**
+ * Daily/weekly/monthly aggregate row from the Eodin SDK analytics API.
+ *
+ * Wire field names are upstream-native snake_case (the Eodin API returns
+ * `core_actions`, `paywall_views`) — see file header for the camelCase
+ * rule. We keep the snake_case here because these map 1:1 to column names
+ * in the `sdk_events` table that M3 will provision; consumers pay the cost
+ * of one inconsistency at the upstream boundary instead of a translation
+ * layer per skill.
+ */
+export interface EodinSummaryRow {
+  date: string;
+  installs: number;
+  dau: number;
+  sessions: number;
+  core_actions: number;
+  paywall_views: number;
+  subscriptions: number;
+  revenue: number;
+}
+
+export interface EodinFunnelStep {
+  step: string;
+  count: number;
+  rate: number;
+  drop_rate: number;
+}
+
+export interface EodinFunnelData {
+  funnel: EodinFunnelStep[];
+  overall_conversion: number;
+}
+
+export interface EodinCohort {
+  cohort_date: string;
+  cohort_size: number;
+  /** Always normalized to fractions in [0, 1]. */
+  retention: number[];
+}
+
+// ---------------------------------------------------------------------------
+// ASOMobile keyword ranking
+// ---------------------------------------------------------------------------
+
+export interface AsoKeywordRanking {
+  keyword: string;
+  /** Current rank (1 = best), or null if unranked in the top N. */
+  rank: number | null;
+  searchVolume: number;
+  /** 0–100 scale competition score, or null if unknown. */
+  competition: number | null;
+}
+
+export interface AsoKeywordSuggestion {
+  keyword: string;
+  searchVolume: number;
+  competition: number | null;
+}
+
+export interface AsoCompetitorInfo {
+  title: string;
+  subtitle: string;
+  /**
+   * Attacker-controllable: sourced from a third-party App Store / Google Play
+   * listing. Skills in M4+ that forward this field into a Claude prompt MUST
+   * route it through `src/security/prompt-guard.ts` first — indirect prompt
+   * injection via competitor metadata is a realistic attack path.
+   */
+  description: string;
+  keywords: string[];
+}

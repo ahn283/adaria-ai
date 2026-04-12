@@ -118,9 +118,9 @@ CI) are listed at the end.
 
 - [x] Port `src/collectors/appstore.ts` + test (camelCase wire shape, `parseRetryAfter`, `testHooks` pattern, JSON:API envelope tests; see review-2026-04-12-m2-batch1-collectors.md)
 - [x] Port `src/collectors/playstore.ts` + test (shared pattern; `AuthError` wrapping for invalid service account JSON)
-- [ ] Port `src/collectors/eodin-sdk.ts` + test
+- [x] Port `src/collectors/eodin-sdk.ts` + test (SSRF allowlist, percent-cohort normalization, API-key redaction in error bodies; snake_case wire shape intentional — see review-2026-04-12-m2-batch2-collectors.md)
 - [ ] Port `src/collectors/eodin-blog.ts` + test
-- [ ] Port `src/collectors/asomobile.ts` + test
+- [x] Port `src/collectors/asomobile.ts` + test (SSRF allowlist, empty-keywords guard, `AsoCompetitorInfo.description` flagged for prompt-guard in M4)
 - [ ] Port `src/collectors/fridgify-recipes.ts` + test (incl. cascade logic)
 - [ ] Port `src/collectors/youtube.ts` + test
 - [ ] Port `src/collectors/arden-tts.ts` + test
@@ -413,7 +413,7 @@ CI) are listed at the end.
 |-----------|:---------:|--------|---------|-----------|
 | M0 Bootstrap | 0.5 | ✅ | 2026-04-12 | 2026-04-12 |
 | M1 Runtime import | 1.5 | 🟨 | 2026-04-12 | — (code + tests landed; awaiting manual Slack smoke test per exit-criteria section) |
-| M2 Collectors | 1.0 | 🟨 | 2026-04-12 | — (batch 1/4 landed: appstore + playstore) |
+| M2 Collectors | 1.0 | 🟨 | 2026-04-12 | — (batch 2/4 landed: appstore, playstore, eodin-sdk, asomobile) |
 | M3 DB + config | 0.5 | ⬜ | — | — |
 | M4 ASO skill | 1.5 | ⬜ | — | — |
 | M5 Remaining skills | 2.0 | ⬜ | — | — |
