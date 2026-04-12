@@ -69,3 +69,30 @@ function calculateDelay(
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+/**
+ * Parse an HTTP `Retry-After` header value into seconds.
+ *
+ * RFC 7231 allows both a delta-seconds integer ("120") and an HTTP-date
+ * ("Fri, 31 Dec 2026 23:59:59 GMT"). The growth-agent JS collectors only
+ * handled the former; here we handle both and fall back to the caller's
+ * default on anything unparseable or negative.
+ */
+export function parseRetryAfter(
+  header: string | null | undefined,
+  fallbackSeconds = 60
+): number {
+  if (!header) return fallbackSeconds;
+
+  const asSeconds = Number(header);
+  if (Number.isFinite(asSeconds)) {
+    return asSeconds >= 0 ? asSeconds : fallbackSeconds;
+  }
+
+  const asDateMs = Date.parse(header);
+  if (Number.isFinite(asDateMs)) {
+    return Math.max(0, Math.ceil((asDateMs - Date.now()) / 1000));
+  }
+
+  return fallbackSeconds;
+}

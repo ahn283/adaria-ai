@@ -116,15 +116,15 @@ CI) are listed at the end.
 
 **Goal:** all 8 collectors callable from TypeScript with existing test coverage.
 
-- [ ] Port `src/collectors/appstore.ts` + test
-- [ ] Port `src/collectors/playstore.ts` + test
+- [x] Port `src/collectors/appstore.ts` + test (camelCase wire shape, `parseRetryAfter`, `testHooks` pattern, JSON:API envelope tests; see review-2026-04-12-m2-batch1-collectors.md)
+- [x] Port `src/collectors/playstore.ts` + test (shared pattern; `AuthError` wrapping for invalid service account JSON)
 - [ ] Port `src/collectors/eodin-sdk.ts` + test
 - [ ] Port `src/collectors/eodin-blog.ts` + test
 - [ ] Port `src/collectors/asomobile.ts` + test
 - [ ] Port `src/collectors/fridgify-recipes.ts` + test (incl. cascade logic)
 - [ ] Port `src/collectors/youtube.ts` + test
 - [ ] Port `src/collectors/arden-tts.ts` + test
-- [ ] Add return-type interfaces for each collector in `src/types/`
+- [ ] Add return-type interfaces for each collector in `src/types/` (🟨 started: `src/types/collectors.ts` with `StoreReview`, `AppStoreLocalization`, `AppStoreLocalizationUpdate`; remaining 6 collectors to contribute their own types)
 - [ ] Write `scripts/smoke-collectors.ts` — hits each API, prints sample output
 - [ ] Run smoke test once manually against real APIs
 
@@ -413,7 +413,7 @@ CI) are listed at the end.
 |-----------|:---------:|--------|---------|-----------|
 | M0 Bootstrap | 0.5 | ✅ | 2026-04-12 | 2026-04-12 |
 | M1 Runtime import | 1.5 | 🟨 | 2026-04-12 | — (code + tests landed; awaiting manual Slack smoke test per exit-criteria section) |
-| M2 Collectors | 1.0 | ⬜ | — | — |
+| M2 Collectors | 1.0 | 🟨 | 2026-04-12 | — (batch 1/4 landed: appstore + playstore) |
 | M3 DB + config | 0.5 | ⬜ | — | — |
 | M4 ASO skill | 1.5 | ⬜ | — | — |
 | M5 Remaining skills | 2.0 | ⬜ | — | — |

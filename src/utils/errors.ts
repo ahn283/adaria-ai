@@ -100,6 +100,27 @@ export class ExternalApiError extends AdariaError {
   }
 }
 
+export interface RateLimitErrorOptions extends ErrorCtorOptions {
+  retryAfterSeconds?: number;
+}
+
+export class RateLimitError extends AdariaError {
+  readonly retryAfterSeconds: number;
+
+  constructor(message: string, options?: RateLimitErrorOptions) {
+    super(
+      message,
+      withDefaults(
+        options,
+        "RATE_LIMIT_ERROR",
+        "Upstream service rate limited us. Retrying shortly."
+      )
+    );
+    this.name = "RateLimitError";
+    this.retryAfterSeconds = options?.retryAfterSeconds ?? 60;
+  }
+}
+
 export class TimeoutError extends AdariaError {
   constructor(message: string, options?: ErrorCtorOptions) {
     super(

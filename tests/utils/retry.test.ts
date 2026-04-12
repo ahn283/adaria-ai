@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { withRetry } from "../../src/utils/retry.js";
+import { parseRetryAfter, withRetry } from "../../src/utils/retry.js";
 
 describe("withRetry", () => {
   it("returns result on first success", async () => {
@@ -69,5 +69,38 @@ describe("withRetry", () => {
     const elapsed = Date.now() - start;
 
     expect(elapsed).toBeLessThan(100);
+  });
+});
+
+describe("parseRetryAfter", () => {
+  it("parses delta-seconds integer", () => {
+    expect(parseRetryAfter("120")).toBe(120);
+  });
+
+  it("parses HTTP-date relative to now", () => {
+    const future = new Date(Date.now() + 90_000).toUTCString();
+    const result = parseRetryAfter(future);
+    expect(result).toBeGreaterThanOrEqual(88);
+    expect(result).toBeLessThanOrEqual(91);
+  });
+
+  it("clamps past HTTP-dates to zero", () => {
+    const past = new Date(Date.now() - 60_000).toUTCString();
+    expect(parseRetryAfter(past)).toBe(0);
+  });
+
+  it("returns fallback on null/undefined/empty", () => {
+    expect(parseRetryAfter(null)).toBe(60);
+    expect(parseRetryAfter(undefined)).toBe(60);
+    expect(parseRetryAfter("")).toBe(60);
+    expect(parseRetryAfter(null, 10)).toBe(10);
+  });
+
+  it("returns fallback on unparseable garbage", () => {
+    expect(parseRetryAfter("not a date nor a number", 42)).toBe(42);
+  });
+
+  it("rejects negative delta-seconds", () => {
+    expect(parseRetryAfter("-5", 30)).toBe(30);
   });
 });

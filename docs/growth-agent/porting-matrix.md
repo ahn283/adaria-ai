@@ -141,14 +141,15 @@ Slack when it should be summarised".
 
 | Source | Target | Notes |
 |--------|--------|-------|
-| `collectors/appstore.js` | `src/collectors/appstore.ts` | App Store Connect API + JWT |
-| `collectors/playstore.js` | `src/collectors/playstore.ts` | Google Play Developer API |
+| `collectors/appstore.js` | `src/collectors/appstore.ts` | App Store Connect API + JWT. **Wire shape delta:** review map is camelCase (`reviewId`, `createdAt`); `getAppLocalizations` returns a flat `AppStoreLocalization` instead of raw JSON:API. Skills in M4+ must read `loc.name` directly. |
+| `collectors/playstore.js` | `src/collectors/playstore.ts` | Google Play Developer API. Same camelCase conversion for reviews. Service-account JSON parse errors wrapped in `AuthError` to avoid leaking key fragments. |
 | `collectors/eodin-sdk.js` | `src/collectors/eodin-sdk.ts` | Eodin SDK (installs, DAU, funnel, cohort) |
 | `collectors/eodin-blog.js` | `src/collectors/eodin-blog.ts` | EodinBlogPublisher + Search Console + GA4 |
 | `collectors/asomobile.js` | `src/collectors/asomobile.ts` | ASOMobile keyword API |
 | `collectors/fridgify-recipes.js` | `src/collectors/fridgify-recipes.ts` | Fridgify public API, cascade |
 | `collectors/youtube.js` | `src/collectors/youtube.ts` | YouTube Data API |
 | `collectors/arden-tts.js` | `src/collectors/arden-tts.ts` | Arden TTS |
+| `collectors/errors.js` (`RateLimitError`) | 🔵 merged into `src/utils/errors.ts` | Renamed `retryAfter` → `retryAfterSeconds`, now extends `AdariaError`. `Retry-After` HTTP-date format also honored via `parseRetryAfter` in `src/utils/retry.ts`. |
 
 ### Agents → Skills (all 🟡 adapt — interface change)
 
