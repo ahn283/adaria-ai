@@ -73,4 +73,60 @@ describe("configSchema", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it("defaults collectors to an empty object when omitted", () => {
+    const parsed = configSchema.parse(BASE);
+    expect(parsed.collectors).toEqual({});
+    expect(parsed.collectors.appStore).toBeUndefined();
+    expect(parsed.collectors.ardenTts).toBeUndefined();
+  });
+
+  it("accepts every collector block when provided", () => {
+    const parsed = configSchema.parse({
+      ...BASE,
+      collectors: {
+        appStore: {
+          keyId: "KEY",
+          issuerId: "ISSUER",
+          privateKey: "-----BEGIN PRIVATE KEY-----\nmock\n-----END PRIVATE KEY-----",
+        },
+        playStore: {
+          serviceAccountJson:
+            '{"client_email":"bot@example.iam","private_key":"-----BEGIN PRIVATE KEY-----\\nmock\\n-----END PRIVATE KEY-----"}',
+        },
+        eodinSdk: { apiKey: "eodin-sdk-key" },
+        eodinGrowth: { token: "growth-token" },
+        asoMobile: { apiKey: "aso-key" },
+        youtube: { apiKey: "yt-key" },
+        ardenTts: { endpoint: "https://arden.example.com" },
+      },
+    });
+    expect(parsed.collectors.appStore?.keyId).toBe("KEY");
+    expect(parsed.collectors.eodinGrowth?.token).toBe("growth-token");
+    expect(parsed.collectors.ardenTts?.endpoint).toBe(
+      "https://arden.example.com"
+    );
+  });
+
+  it("rejects ardenTts.endpoint that is not a URL", () => {
+    const result = configSchema.safeParse({
+      ...BASE,
+      collectors: { ardenTts: { endpoint: "not a url" } },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an appStore block missing keyId", () => {
+    const result = configSchema.safeParse({
+      ...BASE,
+      collectors: {
+        appStore: {
+          keyId: "",
+          issuerId: "ISSUER",
+          privateKey: "-----BEGIN PRIVATE KEY-----\nmock\n-----END PRIVATE KEY-----",
+        },
+      },
+    });
+    expect(result.success).toBe(false);
+  });
 });

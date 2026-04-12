@@ -114,4 +114,25 @@ describe("config store", () => {
     // so the user knows which field to fix.
     await expect(loadConfig()).rejects.toThrow(/signingSecret|appToken|botToken/);
   });
+
+  it("loadConfig defaults collectors to {} when the key is omitted", async () => {
+    await saveConfig(VALID_CONFIG);
+    const loaded = await loadConfig();
+    expect(loaded.collectors).toEqual({});
+  });
+
+  it("loadConfig preserves plaintext collector credentials", async () => {
+    await saveConfig({
+      ...VALID_CONFIG,
+      collectors: {
+        eodinSdk: { apiKey: "plaintext-key" },
+        ardenTts: { endpoint: "https://arden.example.com" },
+      },
+    });
+    const loaded = await loadConfig();
+    expect(loaded.collectors.eodinSdk?.apiKey).toBe("plaintext-key");
+    expect(loaded.collectors.ardenTts?.endpoint).toBe(
+      "https://arden.example.com"
+    );
+  });
 });

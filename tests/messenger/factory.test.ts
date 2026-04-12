@@ -58,6 +58,7 @@ function buildConfig(): AdariaConfig {
       approvalTimeoutMinutes: 30,
     },
     agent: { showThinking: true },
+    collectors: {},
   };
 }
 

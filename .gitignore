@@ -8,6 +8,12 @@ dist/
 .env
 .env.*
 !.env.example
+# Never commit real config/apps files at repo root — only the example
+# templates ship. Real credentials live in $HOME/.adaria (prod) or
+# $HOME/.adaria-dev (dev profile); see docs/SETUP.md.
+/config.yaml
+/apps.yaml
+!/apps.example.yaml
 
 # logs
 logs/
@@ -19,6 +25,7 @@ logs/
 *.db-wal
 *.db-shm
 .adaria/
+.adaria-*/
 
 # npm
 *.tgz

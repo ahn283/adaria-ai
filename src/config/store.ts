@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import yaml from "js-yaml";
 import {
   configSchema,
+  KEYCHAIN_KEYS,
   KEYCHAIN_SENTINEL,
   type AdariaConfig,
 } from "./schema.js";
@@ -51,7 +52,7 @@ export async function loadConfig(): Promise<AdariaConfig> {
   let raw: unknown;
   try {
     const content = await fs.readFile(CONFIG_PATH, "utf-8");
-    raw = yaml.load(content);
+    raw = yaml.load(content, { schema: yaml.JSON_SCHEMA });
   } catch (cause) {
     throw new ConfigError(
       `Configuration file not found at ${CONFIG_PATH}`,
@@ -76,24 +77,68 @@ export async function loadConfig(): Promise<AdariaConfig> {
   return resolveKeychainSecrets(result.data);
 }
 
+async function resolveSecretField(slot: string): Promise<string> {
+  return (await getSecret(slot)) ?? "";
+}
+
 async function resolveKeychainSecrets(
   config: AdariaConfig
 ): Promise<AdariaConfig> {
   const resolved = structuredClone(config);
 
   if (resolved.slack.botToken === KEYCHAIN_SENTINEL) {
-    resolved.slack.botToken = (await getSecret("slack-bot-token")) ?? "";
+    resolved.slack.botToken = await resolveSecretField(
+      KEYCHAIN_KEYS.slackBotToken
+    );
   }
   if (resolved.slack.appToken === KEYCHAIN_SENTINEL) {
-    resolved.slack.appToken = (await getSecret("slack-app-token")) ?? "";
+    resolved.slack.appToken = await resolveSecretField(
+      KEYCHAIN_KEYS.slackAppToken
+    );
   }
   if (resolved.slack.signingSecret === KEYCHAIN_SENTINEL) {
-    resolved.slack.signingSecret =
-      (await getSecret("slack-signing-secret")) ?? "";
+    resolved.slack.signingSecret = await resolveSecretField(
+      KEYCHAIN_KEYS.slackSigningSecret
+    );
   }
 
   if (resolved.claude.apiKey === KEYCHAIN_SENTINEL) {
-    resolved.claude.apiKey = (await getSecret("anthropic-api-key")) ?? null;
+    resolved.claude.apiKey =
+      (await getSecret(KEYCHAIN_KEYS.anthropicApiKey)) ?? null;
+  }
+
+  // Collector secrets. Each block is optional — skip resolution if the
+  // user hasn't configured that collector.
+  const collectors = resolved.collectors;
+  if (collectors.appStore?.privateKey === KEYCHAIN_SENTINEL) {
+    collectors.appStore.privateKey = await resolveSecretField(
+      KEYCHAIN_KEYS.appStorePrivateKey
+    );
+  }
+  if (collectors.playStore?.serviceAccountJson === KEYCHAIN_SENTINEL) {
+    collectors.playStore.serviceAccountJson = await resolveSecretField(
+      KEYCHAIN_KEYS.playStoreServiceAccount
+    );
+  }
+  if (collectors.eodinSdk?.apiKey === KEYCHAIN_SENTINEL) {
+    collectors.eodinSdk.apiKey = await resolveSecretField(
+      KEYCHAIN_KEYS.eodinSdkApiKey
+    );
+  }
+  if (collectors.eodinGrowth?.token === KEYCHAIN_SENTINEL) {
+    collectors.eodinGrowth.token = await resolveSecretField(
+      KEYCHAIN_KEYS.eodinGrowthToken
+    );
+  }
+  if (collectors.asoMobile?.apiKey === KEYCHAIN_SENTINEL) {
+    collectors.asoMobile.apiKey = await resolveSecretField(
+      KEYCHAIN_KEYS.asoMobileApiKey
+    );
+  }
+  if (collectors.youtube?.apiKey === KEYCHAIN_SENTINEL) {
+    collectors.youtube.apiKey = await resolveSecretField(
+      KEYCHAIN_KEYS.youtubeApiKey
+    );
   }
 
   return resolved;
@@ -120,7 +165,7 @@ export async function loadRawConfig(): Promise<Record<string, unknown>> {
     );
   }
 
-  const parsed = yaml.load(content);
+  const parsed = yaml.load(content, { schema: yaml.JSON_SCHEMA });
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
     throw new ConfigError(
       `Configuration file at ${CONFIG_PATH} is not an object`

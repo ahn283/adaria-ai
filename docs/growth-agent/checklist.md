@@ -125,8 +125,8 @@ CI) are listed at the end.
 - [x] Port `src/collectors/youtube.ts` + test (API key in querystring redacted on both error paths; Shorts filter tightened to 60s default with `maxDurationSeconds` override; see review-2026-04-12-m2-batch4-collectors.md)
 - [x] Port `src/collectors/arden-tts.ts` + test (constructor enforces http(s) URL scheme so mis-typed endpoints fail loudly; `synthesizeBatch` returns `{ successes, failures }` with per-failure `statusCode`)
 - [x] Add return-type interfaces for each collector in `src/types/` (`StoreReview`, `AppStoreLocalization`, `EodinSummaryRow/FunnelData/Cohort`, `AsoKeywordRanking/Suggestion/CompetitorInfo`, `BlogPostDraft/Update/ListOptions/ListResponse`, `FridgifyRecipe/CascadeResult`, `YouTubeVideoStats` — see `src/types/collectors.ts`)
-- [x] Write `scripts/smoke-collectors.ts` — hits each API, prints sample output (runs via `npm run smoke:collectors` through `tsx`; env-var driven so no `~/.adaria/config.yaml` dependency — M3 will rewire this through the config loader)
-- [ ] Run smoke test once manually against real APIs (requires live credentials — not doable from automation; dry run with no creds verified 8 skip / 0 error)
+- [x] Write `scripts/smoke-collectors.ts` — runs via `npm run smoke:collectors` through `tsx`. Loads credentials from `config.yaml.collectors` (init-driven, no env var fallback) and per-app identifiers from `apps.yaml`. Dev profile: `$HOME/.adaria-dev` via `ADARIA_HOME` override.
+- [ ] Run smoke test once manually against real APIs (`npm run init:dev` → `npm run smoke:collectors:dev`; dry run verified Fridgify live API + 7 skip / 0 error)
 
 **Exit criteria verification:**
 - [x] `npm test` passes with all collector tests (340 total, 76 dedicated collector tests across 8 files)

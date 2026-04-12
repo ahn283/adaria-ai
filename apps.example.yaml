@@ -1,0 +1,65 @@
+# adaria-ai apps.yaml
+#
+# One entry per app in the portfolio. Skills and orchestrators iterate
+# over every `active: true` app. Copy this file to `~/.adaria/apps.yaml`
+# (or edit the path your `adaria-ai init` printed) and tailor it.
+#
+# Global collector credentials (App Store Connect key pair, Play service
+# account, API keys, tokens) live in `config.yaml.collectors` — NOT
+# here. This file only holds per-app identifiers and metadata.
+
+apps:
+  - id: fridgify
+    name: Fridgify
+    platform: [ios, android]
+    appStoreId: "123456789"
+    playStorePackage: com.eodin.fridgify
+    eodinSdkAppId: fridgify
+    asoMobileId: "123456789"
+    youtubeChannelId: ""
+    primaryKeywords:
+      - fridge manager
+      - food tracker
+      - expiry date
+    competitors:
+      - fridgee
+      - grocy
+      - myfoodbudget
+    locale: [ko, en, ja]
+    features:
+      fridgifyRecipes: true
+    active: true
+
+  - id: arden
+    name: Arden
+    platform: [ios, android]
+    appStoreId: "987654321"
+    playStorePackage: com.eodin.arden
+    eodinSdkAppId: arden
+    asoMobileId: "987654321"
+    youtubeChannelId: ""
+    primaryKeywords:
+      - tts
+      - text to speech
+      - voice generator
+    competitors:
+      - naturalreader
+      - speechify
+    locale: [ko, en]
+    active: true
+
+  - id: tempy
+    name: Tempy
+    platform: [ios]
+    appStoreId: "111222333"
+    eodinSdkAppId: tempy
+    asoMobileId: "111222333"
+    primaryKeywords:
+      - temperature
+      - weather widget
+      - thermometer
+    competitors:
+      - weatherbug
+      - thermometer++
+    locale: [ko, en, ja]
+    active: true

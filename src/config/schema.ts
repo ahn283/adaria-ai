@@ -59,6 +59,60 @@ export const agentConfigSchema = z.object({
   briefingChannel: z.string().optional(),
 });
 
+// ---------------------------------------------------------------------------
+// Collector credentials (global — per-app identifiers live in apps.yaml)
+// ---------------------------------------------------------------------------
+
+/**
+ * `config.yaml.collectors` holds the global secrets each collector needs.
+ * Every block is optional so users can enable collectors incrementally:
+ * an unset block means the skill/orchestrator that depends on it will
+ * simply skip that data source. Secret fields accept the keychain
+ * sentinel the same way `slack.*` does.
+ */
+export const appStoreCollectorConfigSchema = z.object({
+  keyId: z.string().min(1),
+  issuerId: z.string().min(1),
+  privateKey: z.string().min(1),
+});
+
+export const playStoreCollectorConfigSchema = z.object({
+  serviceAccountJson: z.string().min(1),
+});
+
+export const eodinSdkCollectorConfigSchema = z.object({
+  apiKey: z.string().min(1),
+});
+
+export const eodinGrowthCollectorConfigSchema = z.object({
+  token: z.string().min(1),
+});
+
+export const asoMobileCollectorConfigSchema = z.object({
+  apiKey: z.string().min(1),
+});
+
+export const youtubeCollectorConfigSchema = z.object({
+  apiKey: z.string().min(1),
+});
+
+export const ardenTtsCollectorConfigSchema = z.object({
+  /** Not a secret — the user-hosted TTS endpoint URL. */
+  endpoint: z.string().url(),
+});
+
+export const collectorsConfigSchema = z
+  .object({
+    appStore: appStoreCollectorConfigSchema.optional(),
+    playStore: playStoreCollectorConfigSchema.optional(),
+    eodinSdk: eodinSdkCollectorConfigSchema.optional(),
+    eodinGrowth: eodinGrowthCollectorConfigSchema.optional(),
+    asoMobile: asoMobileCollectorConfigSchema.optional(),
+    youtube: youtubeCollectorConfigSchema.optional(),
+    ardenTts: ardenTtsCollectorConfigSchema.optional(),
+  })
+  .default({});
+
 export const configSchema = z.object({
   slack: slackConfigSchema,
   claude: claudeConfigSchema,
@@ -68,6 +122,7 @@ export const configSchema = z.object({
     approvalTimeoutMinutes: 30,
   }),
   agent: agentConfigSchema.default({ showThinking: true }),
+  collectors: collectorsConfigSchema,
 });
 
 export type AdariaConfig = z.infer<typeof configSchema>;
@@ -76,5 +131,44 @@ export type ClaudeConfig = z.infer<typeof claudeConfigSchema>;
 export type SecurityConfig = z.infer<typeof securityConfigSchema>;
 export type SafetyConfig = z.infer<typeof safetyConfigSchema>;
 export type AgentConfig = z.infer<typeof agentConfigSchema>;
+export type CollectorsConfig = z.infer<typeof collectorsConfigSchema>;
+export type AppStoreCollectorConfig = z.infer<
+  typeof appStoreCollectorConfigSchema
+>;
+export type PlayStoreCollectorConfig = z.infer<
+  typeof playStoreCollectorConfigSchema
+>;
+export type EodinSdkCollectorConfig = z.infer<
+  typeof eodinSdkCollectorConfigSchema
+>;
+export type EodinGrowthCollectorConfig = z.infer<
+  typeof eodinGrowthCollectorConfigSchema
+>;
+export type AsoMobileCollectorConfig = z.infer<
+  typeof asoMobileCollectorConfigSchema
+>;
+export type YoutubeCollectorConfig = z.infer<
+  typeof youtubeCollectorConfigSchema
+>;
+export type ArdenTtsCollectorConfig = z.infer<
+  typeof ardenTtsCollectorConfigSchema
+>;
 
 export const KEYCHAIN_SENTINEL = "***keychain***";
+
+/**
+ * Keychain slot names for every secret field in the config. Kept in one
+ * place so init.ts (writes) and store.ts (reads) can't drift out of sync.
+ */
+export const KEYCHAIN_KEYS = {
+  slackBotToken: "slack-bot-token",
+  slackAppToken: "slack-app-token",
+  slackSigningSecret: "slack-signing-secret",
+  anthropicApiKey: "anthropic-api-key",
+  appStorePrivateKey: "collector-appstore-private-key",
+  playStoreServiceAccount: "collector-playstore-service-account",
+  eodinSdkApiKey: "collector-eodin-sdk-api-key",
+  eodinGrowthToken: "collector-eodin-growth-token",
+  asoMobileApiKey: "collector-asomobile-api-key",
+  youtubeApiKey: "collector-youtube-api-key",
+} as const;

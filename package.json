@@ -9,9 +9,9 @@
   },
   "files": [
     "dist/",
-    "src/",
     "prompts/",
     "launchd/",
+    "apps.example.yaml",
     "README.md",
     "LICENSE"
   ],
@@ -26,7 +26,10 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "smoke:collectors": "tsx scripts/smoke-collectors.ts",
-    "prepublishOnly": "npm run build && npm run lint && npm test"
+    "smoke:collectors:dev": "ADARIA_HOME=$HOME/.adaria-dev tsx scripts/smoke-collectors.ts",
+    "init:dev": "ADARIA_HOME=$HOME/.adaria-dev tsx src/index.ts init",
+    "check:tarball-secrets": "tsx scripts/check-tarball-secrets.ts",
+    "prepublishOnly": "npm run build && npm run lint && npm test && npm run check:tarball-secrets"
   },
   "keywords": [
     "marketing",
