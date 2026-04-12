@@ -206,6 +206,21 @@ export interface FridgifyCascadeResult {
   satisfied: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// YouTube Shorts performance
+// ---------------------------------------------------------------------------
+
+export interface YouTubeVideoStats {
+  videoId: string;
+  title: string;
+  publishedAt: string | null;
+  views: number;
+  likes: number;
+  comments: number;
+  /** ISO 8601 duration (`PT30S`, `PT1M10S`, …), or null if missing. */
+  duration: string | null;
+}
+
 export interface AsoCompetitorInfo {
   title: string;
   subtitle: string;

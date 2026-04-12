@@ -122,9 +122,9 @@ CI) are listed at the end.
 - [x] Port `src/collectors/eodin-blog.ts` + test (3 clients unified under `EodinGrowthClient` base; `markdownToHtml` now HTML-escapes and scheme-whitelists link URLs; bearer redaction in error bodies; see review-2026-04-12-m2-batch3-collectors.md)
 - [x] Port `src/collectors/asomobile.ts` + test (SSRF allowlist, empty-keywords guard, `AsoCompetitorInfo.description` flagged for prompt-guard in M4)
 - [x] Port `src/collectors/fridgify-recipes.ts` + test (week→month→quarter→year cascade with `satisfied` flag, single-retry rate limit, `RateLimitError` on persistent 429)
-- [ ] Port `src/collectors/youtube.ts` + test
-- [ ] Port `src/collectors/arden-tts.ts` + test
-- [ ] Add return-type interfaces for each collector in `src/types/` (🟨 started: `src/types/collectors.ts` with `StoreReview`, `AppStoreLocalization`, `AppStoreLocalizationUpdate`; remaining 6 collectors to contribute their own types)
+- [x] Port `src/collectors/youtube.ts` + test (API key in querystring redacted on both error paths; Shorts filter tightened to 60s default with `maxDurationSeconds` override; see review-2026-04-12-m2-batch4-collectors.md)
+- [x] Port `src/collectors/arden-tts.ts` + test (constructor enforces http(s) URL scheme so mis-typed endpoints fail loudly; `synthesizeBatch` returns `{ successes, failures }` with per-failure `statusCode`)
+- [x] Add return-type interfaces for each collector in `src/types/` (`StoreReview`, `AppStoreLocalization`, `EodinSummaryRow/FunnelData/Cohort`, `AsoKeywordRanking/Suggestion/CompetitorInfo`, `BlogPostDraft/Update/ListOptions/ListResponse`, `FridgifyRecipe/CascadeResult`, `YouTubeVideoStats` — see `src/types/collectors.ts`)
 - [ ] Write `scripts/smoke-collectors.ts` — hits each API, prints sample output
 - [ ] Run smoke test once manually against real APIs
 
