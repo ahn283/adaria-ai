@@ -114,7 +114,7 @@ function newAdapter(): InstanceType<typeof SlackAdapter> {
 }
 
 function resetMockState(): void {
-  mockState.messageHandler = undefined;
+  delete mockState.messageHandler;
   mockState.eventHandlers = {};
   mockState.actionHandlers = {};
   mockState.postedMessages = [];
