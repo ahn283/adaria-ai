@@ -108,6 +108,7 @@ export interface WeeklySkillDispatchers {
   shortForm: (app: AppConfig) => Promise<SkillResult>;
   sdkRequest: (app: AppConfig) => Promise<SkillResult>;
   content: (app: AppConfig) => Promise<SkillResult>;
+  socialPublish: (app: AppConfig) => Promise<SkillResult>;
 }
 
 // ---------------------------------------------------------------------------
@@ -167,6 +168,7 @@ export async function runWeeklyAnalysis(
       seoBlog: null,
       shortForm: null,
       content: null,
+      socialPublish: null,
       webMetrics: null,
     };
 
@@ -225,6 +227,15 @@ export async function runWeeklyAnalysis(
     if (!isSkipped(sdkRequestResult)) {
       report.sdkRequests = agentResult("SDK requests", sdkRequestResult);
       recordMetric(db, app.id, "sdk-request", sdkRequestResult);
+    }
+
+    // Social publish — generate content for enabled platforms
+    const socialResult = await timedRun(() =>
+      dispatchers.socialPublish(app),
+    );
+    if (!isSkipped(socialResult)) {
+      report.socialPublish = agentResult("Social publish", socialResult);
+      recordMetric(db, app.id, "social-publish", socialResult);
     }
 
     // Send briefing
@@ -363,6 +374,7 @@ function formatBriefingText(report: WeeklyReport): string {
     { label: "SEO Blog", data: report.seoBlog },
     { label: "Short-form", data: report.shortForm },
     { label: "Content", data: report.content },
+    { label: "Social", data: report.socialPublish },
   ];
 
   for (const p of parts) {
@@ -399,6 +411,7 @@ function collectApprovalItems(
       { agent: "short-form", result: report.shortForm },
       { agent: "content", result: report.content },
       { agent: "sdk-request", result: report.sdkRequests },
+      { agent: "social-publish", result: report.socialPublish },
     ];
 
   for (const { result } of skillResults) {

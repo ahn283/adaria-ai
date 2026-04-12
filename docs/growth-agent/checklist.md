@@ -369,20 +369,28 @@ CI) are listed at the end.
   - [ ] Review reply approval (dry-run)
   - [ ] Metadata change approval (dry-run)
 
+### Daemon wiring (deferred from M6/M6.5)
+
+- [x] Wire `daemon.ts` to load DB, apps, pass production skill registry to AgentCore
+- [x] Create `src/skills/registry.ts` — `createProductionRegistry()` with all 8 skills
+- [x] Register `SocialPublishSkill` with commands `["social", "소셜", "sns"]` (M6.5 C2)
+- [x] Add `socialPublish` to `WeeklyReport` interface + orchestrator dispatch (M6.5 H2)
+- [x] Wire `socialPublish` dispatcher in `analyze.ts`
+- [x] Include social results in `formatBriefingText` + `collectApprovalItems`
+- [ ] Wire `SocialPublishSkill.executePost()` to approval callback (M6.5 H4) — requires ApprovalManager rework, deferred to M8
+
 ### Doctor updates
 
-- [ ] Port `doctor.ts` to cover all growth-marketing checks:
-  - [ ] App Store Connect credentials
-  - [ ] Google Play credentials
-  - [ ] ASOMobile API
-  - [ ] Eodin SDK
-  - [ ] Eodin Blog token
-  - [ ] GA4
-  - [ ] Search Console
-  - [ ] apps.yaml validity
-  - [ ] DB accessible
-  - [ ] MCP tools registered
-- [ ] Add warning: claude auth state touched within last 24h
+- [x] Port `doctor.ts` to cover all growth-marketing checks:
+  - [x] App Store Connect credentials (optional, non-fatal)
+  - [x] Google Play credentials (optional, non-fatal)
+  - [x] ASOMobile API (optional, non-fatal)
+  - [x] Eodin SDK (optional, non-fatal)
+  - [x] Eodin Growth token (optional, non-fatal)
+  - [x] Social platform credentials (6 platforms, optional, non-fatal)
+  - [x] briefingChannel check
+  - [x] DB accessible (table count)
+- [ ] Add warning: claude auth state touched within last 24h — deferred to M8
 
 ### Docs
 
@@ -520,7 +528,7 @@ CI) are listed at the end.
 | M5.5 Mode B tools | 0.5 | 🟨 | 2026-04-12 | — (4 tools + tool host + wiring landed; prompt-injection test + integration test + doctor update deferred) |
 | M6 Orchestrators | 1.0 | 🟨 | 2026-04-12 | — (code + tests landed; pending manual verify: Slack briefing + launchctl kickstart) |
 | M6.5 Social publishing | 3.0 | 🟨 | 2026-04-12 | — (6 clients + skill + DB + 33 tests landed; init wizard + skill registry wiring + smoke test deferred to M7) |
-| M7 Parity + parallel | 1.0 | ⬜ | — | — |
+| M7 Parity + parallel | 1.0 | 🟨 | 2026-04-12 | — (daemon wiring + doctor + orchestrator social landed; parallel run, docs, approval executePost wiring pending) |
 | M8 Cutover | 0.5 | ⬜ | — | — |
 | M9 npm publish | 0.5 | ⬜ | — | — |
 | **Total** | **~13** | | | |

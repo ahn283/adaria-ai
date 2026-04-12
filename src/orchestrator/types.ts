@@ -85,6 +85,7 @@ export interface WeeklyReport {
   seoBlog: AgentRunResult | null;
   shortForm: AgentRunResult | null;
   content: AgentRunResult | null;
+  socialPublish: AgentRunResult | null;
   webMetrics: WebMetrics | null;
 }
 

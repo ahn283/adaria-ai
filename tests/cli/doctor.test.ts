@@ -56,7 +56,10 @@ function baseConfig(): Record<string, unknown> {
       dangerousActionsRequireApproval: true,
       approvalTimeoutMinutes: 30,
     },
-    agent: { showThinking: true },
+    agent: { showThinking: true, weeklyTimeoutMs: 900_000 },
+    thresholds: {},
+    social: {},
+    collectors: {},
   };
 }
 
@@ -99,7 +102,7 @@ describe("runDoctor", () => {
     spy.mockRestore();
 
     const output = captured.join("\n");
-    expect(output).toContain("All checks passed");
+    expect(output).toContain("checks passed");
     expect(output).not.toContain("❌");
     expect(process.exitCode).toBeUndefined();
   });

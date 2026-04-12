@@ -13,12 +13,12 @@ import { YouTubeClient, type YouTubeConfig } from "./youtube.js";
 import { LinkedInClient, type LinkedInConfig } from "./linkedin.js";
 
 export type SocialConfigs = {
-  twitter?: TwitterConfig;
-  facebook?: FacebookConfig;
-  threads?: ThreadsConfig;
-  tiktok?: TikTokConfig;
-  youtube?: YouTubeConfig;
-  linkedin?: LinkedInConfig;
+  twitter?: TwitterConfig | undefined;
+  facebook?: FacebookConfig | undefined;
+  threads?: ThreadsConfig | undefined;
+  tiktok?: TikTokConfig | undefined;
+  youtube?: YouTubeConfig | undefined;
+  linkedin?: LinkedInConfig | undefined;
 };
 
 /**

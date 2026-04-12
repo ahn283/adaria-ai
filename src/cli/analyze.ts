@@ -12,6 +12,7 @@ import { createMessengerAdapter } from "../messenger/factory.js";
 import { runWeeklyAnalysis } from "../orchestrator/weekly.js";
 import type { WeeklySkillDispatchers } from "../orchestrator/weekly.js";
 import { ReviewSkill } from "../skills/review.js";
+import { SocialPublishSkill } from "../skills/social-publish.js";
 import { SeoBlogSkill } from "../skills/seo-blog.js";
 import { ShortFormSkill } from "../skills/short-form.js";
 import { SdkRequestSkill } from "../skills/sdk-request.js";
@@ -80,6 +81,16 @@ export async function runAnalyze(): Promise<void> {
     const shortFormSkill = new ShortFormSkill({});
     const sdkRequestSkill = new SdkRequestSkill();
     const contentSkill = new ContentSkill();
+    const socialPublishSkill = new SocialPublishSkill({
+      socialConfigs: {
+        twitter: config.social.twitter,
+        facebook: config.social.facebook,
+        threads: config.social.threads,
+        tiktok: config.social.tiktok,
+        youtube: config.social.youtube,
+        linkedin: config.social.linkedin,
+      },
+    });
 
     // Skills that require deps will throw if collectors are missing.
     // The orchestrator's timedRun catches these as SkippedAgentError.
@@ -91,6 +102,7 @@ export async function runAnalyze(): Promise<void> {
       shortForm: (app) => shortFormSkill.dispatch(ctx, `shortform ${app.name}`),
       sdkRequest: (app) => sdkRequestSkill.dispatch(ctx, `sdkrequest ${app.name}`),
       content: (app) => contentSkill.dispatch(ctx, `content ${app.name}`),
+      socialPublish: (app) => socialPublishSkill.dispatch(ctx, `social ${app.name}`),
     };
 
     await runWeeklyAnalysis({
