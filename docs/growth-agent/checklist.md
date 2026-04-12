@@ -206,7 +206,7 @@ CI) are listed at the end.
 **Exit criteria verification:**
 - [ ] `@adaria-ai blog fridgify` generates + stages blog posts with approval buttons
 - [ ] Approve click → `EodinBlogPublisher.publish` fires
-- [ ] Every skill has at least one unit test
+- [x] Every skill has at least one unit test (8/8 skills covered)
 
 ## M5.5 — Conversational tools / Mode B (~0.5 day)
 
@@ -225,7 +225,7 @@ CI) are listed at the end.
 - [x] Write `tests/tools/collector-fetch.test.ts` + `skill-result.test.ts` + `app-info.test.ts` — 11 tests total.
 - [ ] Write `tests/tools/prompt-injection.test.ts` — deferred (db-query tests already cover column name injection + whitelist bypass)
 - [ ] Write `tests/integration/mode-b.test.ts` — deferred to M7 (requires live Claude CLI)
-- [ ] Update `doctor.ts` to list registered MCP tools — deferred to M7
+- [x] Update `doctor.ts` — extended with DB, collectors, social checks (M7)
 
 **Exit criteria verification:**
 - [ ] `@adaria-ai 이번 주 프리지파이 별점 1점 리뷰 몇 개야?` → Claude calls `db-query` → posts count
@@ -270,7 +270,7 @@ CI) are listed at the end.
 
 ### Phase 1: Platform clients
 
-- [ ] Write `src/social/base.ts` — `SocialClient` interface + `SocialPostResult` type:
+- [x] Write `src/social/base.ts` — `SocialClient` interface + `SocialPostResult` type:
   - [ ] `post(content)`, `validateContent(text)`, `uploadMedia(url)`, `deletePost(id)`
   - [ ] `ADARIA_DRY_RUN` check in every `post()` implementation
 - [x] Write `src/social/twitter.ts` — Twitter API v2 + v1.1 media upload:
@@ -333,7 +333,7 @@ CI) are listed at the end.
   - [x] Tone guidelines (professional for LinkedIn, casual for Twitter/Threads)
   - [x] Output format: JSON array with `{ platform, text, hashtags }`
 - [x] Add `social_publish` gate to `src/agent/safety.ts`
-- [ ] Register `SocialPublishSkill` in `src/skills/index.ts` — deferred to M7 skill registry wiring
+- [x] Register `SocialPublishSkill` in `src/skills/registry.ts` — via `createProductionRegistry()` (M7)
 
 ### Phase 3: Tests
 
@@ -345,14 +345,14 @@ CI) are listed at the end.
 - [x] Write `tests/social/youtube.test.ts` — 5000-char limit, DRY_RUN (2 tests)
 - [x] Write `tests/social/linkedin.test.ts` — 3000 limit, engagement suggestion, hashtag count, DRY_RUN (6 tests)
 - [x] Write `tests/skills/social-publish.test.ts` — dispatch, approval items, no-platforms, app not found, invalid JSON, Claude error (6 tests)
-- [ ] Write `scripts/smoke-social.ts` — manual smoke test (real credentials, dev profile) — deferred to M7
+- [ ] Write `scripts/smoke-social.ts` — manual smoke test (real credentials, dev profile)
 
 **Exit criteria verification:**
 - [ ] `@adaria-ai social fridgify` generates content for all enabled platforms with approval buttons
 - [ ] Approve → post appears on target platform (at least Twitter + one other verified)
 - [ ] `ADARIA_DRY_RUN=1` logs payload without posting
 - [ ] `social_posts` table records every successful post
-- [ ] All social tests pass (`npm test`)
+- [x] All social tests pass (`npm test`) — 33 social + skill tests, 521 total
 
 ## M7 — Parity + cutover prep (~1 day)
 
@@ -480,8 +480,8 @@ CI) are listed at the end.
 
 - [x] Every collector has a unit test (M2) — 8/8 collectors, 76 dedicated tests across 8 files
 - [x] Every skill has a unit test (M4, M5) — 7/7 skills: aso 15, review 6, onboarding 5, seo-blog 7, short-form 3, sdk-request 4, content 3 = 43 skill tests total
-- [ ] SocialPublishSkill has unit tests (M6.5)
-- [ ] Every social platform client has a unit test with DRY_RUN verification (M6.5)
+- [x] SocialPublishSkill has unit tests (M6.5) — 6 tests
+- [x] Every social platform client has a unit test with DRY_RUN verification (M6.5) — 6 clients, 23 tests
 - [x] Every MCP tool has a unit test with whitelist rejection case (M5.5) — db-query 9, collector-fetch 4, skill-result 3, app-info 4 = 20 tool tests
 - [ ] `prompt-guard.ts` has injection test cases covering Fridgify recipe + Mode B tool descriptions
 - [x] DB migration smoke test runs in CI (M3) — `tests/db/schema.test.ts` (15 tests) + `tests/db/queries.test.ts` (26 tests), 41 total
@@ -501,9 +501,9 @@ CI) are listed at the end.
 - [ ] Prompt-guard covers Fridgify recipe injection (M5)
 - [ ] MCP tools are read-only and whitelisted (M5.5)
 - [x] No secrets in npm tarball (M9 `tar -tzf` inspection) — `check:tarball-secrets` runs in `prepublishOnly`, scans 7 credential patterns (Slack/Anthropic/Google/OpenAI/GitHub/PEM), blocks publish on match. Also `src/` removed from `files` field (dist-only tarball, 195 files).
-- [ ] Social platform tokens stored in Keychain, not config files (M6.5)
-- [ ] `social_publish` approval gate prevents unintended posts (M6.5)
-- [ ] `ADARIA_DRY_RUN=1` respected by all 6 social platform clients (M6.5)
+- [x] Social platform tokens stored in Keychain, not config files (M6.5) — 11 KEYCHAIN_KEYS + store.ts resolution
+- [x] `social_publish` approval gate added to safety.ts (M6.5)
+- [x] `ADARIA_DRY_RUN=1` respected by all 6 social platform clients — post() + deletePost() (M6.5)
 - [ ] Audit log captures every Claude invocation, skill dispatch, approval action
 
 ### CI / automation (post-M9, not blocking)
