@@ -100,6 +100,7 @@ export class SlackAdapter implements MessengerAdapter {
       const msg = message as {
         user?: string;
         channel?: string;
+        channel_type?: string;
         thread_ts?: string;
         text?: string;
         ts?: string;
@@ -111,6 +112,13 @@ export class SlackAdapter implements MessengerAdapter {
       };
       if (!msg.user) return Promise.resolve();
       if (!msg.text && !msg.files?.length) return Promise.resolve();
+
+      // In channels, only respond to @mentions (handled by app_mention).
+      // The message handler only processes DMs (im) to avoid double
+      // responses when both message and app_mention fire for the same event.
+      if (msg.channel_type !== "im") {
+        return Promise.resolve();
+      }
 
       const eventTs = msg.ts ?? "";
       if (this.isDuplicate(eventTs)) return Promise.resolve();

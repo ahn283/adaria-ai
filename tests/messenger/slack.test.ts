@@ -140,6 +140,7 @@ describe("SlackAdapter", () => {
         message: {
           user: "U_ALLOWED",
           channel: "C1",
+          channel_type: "im",
           ts: "1700000000.001",
           text: "hi",
         },
@@ -161,6 +162,7 @@ describe("SlackAdapter", () => {
         message: {
           user: "U1",
           channel: "C1",
+          channel_type: "im",
           ts: "1700000099.999",
           thread_ts: "1700000000.001",
           text: "reply",
@@ -228,6 +230,7 @@ describe("SlackAdapter", () => {
         message: {
           user: "U1",
           channel: "C1",
+          channel_type: "im",
           ts: "1700000444.555",
           subtype: "file_share",
           files: [
@@ -255,6 +258,7 @@ describe("SlackAdapter", () => {
         message: {
           user: "U1",
           channel: "C1",
+          channel_type: "im",
           ts: "1700000000.001",
           text: "once",
         },
