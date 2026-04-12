@@ -141,6 +141,42 @@ async function resolveKeychainSecrets(
     );
   }
 
+  // Social platform secrets
+  const social = resolved.social;
+  if (social.twitter?.apiKey === KEYCHAIN_SENTINEL) {
+    social.twitter.apiKey = await resolveSecretField(KEYCHAIN_KEYS.twitterApiKey);
+  }
+  if (social.twitter?.apiSecret === KEYCHAIN_SENTINEL) {
+    social.twitter.apiSecret = await resolveSecretField(KEYCHAIN_KEYS.twitterApiSecret);
+  }
+  if (social.twitter?.accessToken === KEYCHAIN_SENTINEL) {
+    social.twitter.accessToken = await resolveSecretField(KEYCHAIN_KEYS.twitterAccessToken);
+  }
+  if (social.twitter?.accessTokenSecret === KEYCHAIN_SENTINEL) {
+    social.twitter.accessTokenSecret = await resolveSecretField(KEYCHAIN_KEYS.twitterAccessTokenSecret);
+  }
+  if (social.facebook?.appSecret === KEYCHAIN_SENTINEL) {
+    social.facebook.appSecret = await resolveSecretField(KEYCHAIN_KEYS.facebookAppSecret);
+  }
+  if (social.facebook?.accessToken === KEYCHAIN_SENTINEL) {
+    social.facebook.accessToken = await resolveSecretField(KEYCHAIN_KEYS.facebookAccessToken);
+  }
+  if (social.threads?.accessToken === KEYCHAIN_SENTINEL) {
+    social.threads.accessToken = await resolveSecretField(KEYCHAIN_KEYS.threadsAccessToken);
+  }
+  if (social.tiktok?.clientSecret === KEYCHAIN_SENTINEL) {
+    social.tiktok.clientSecret = await resolveSecretField(KEYCHAIN_KEYS.tiktokClientSecret);
+  }
+  if (social.tiktok?.accessToken === KEYCHAIN_SENTINEL) {
+    social.tiktok.accessToken = await resolveSecretField(KEYCHAIN_KEYS.tiktokAccessToken);
+  }
+  if (social.youtube?.accessToken === KEYCHAIN_SENTINEL) {
+    social.youtube.accessToken = await resolveSecretField(KEYCHAIN_KEYS.youtubeAccessToken);
+  }
+  if (social.linkedin?.accessToken === KEYCHAIN_SENTINEL) {
+    social.linkedin.accessToken = await resolveSecretField(KEYCHAIN_KEYS.linkedinAccessToken);
+  }
+
   return resolved;
 }
 

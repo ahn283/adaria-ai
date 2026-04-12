@@ -20,7 +20,7 @@ import {
   type CollectorsConfig,
   type SocialConfig,
 } from "../config/schema.js";
-import { configExists, loadConfig, saveConfig } from "../config/store.js";
+import { configExists, loadRawConfig, saveConfig } from "../config/store.js";
 import { setSecret } from "../config/keychain.js";
 import { APPS_PATH, CONFIG_PATH } from "../utils/paths.js";
 
@@ -116,10 +116,15 @@ async function applySlack(
       signingSecret: KEYCHAIN_SENTINEL,
     },
     security: {
-      allowedUsers: [slack.allowedUser],
+      ...(config.security ?? {}),
+      allowedUsers: [
+        ...new Set([
+          slack.allowedUser,
+          ...((config.security as Record<string, unknown> | undefined)?.["allowedUsers"] as string[] ?? []),
+        ]),
+      ],
       dmOnly: false,
       auditLog: { enabled: true, maskSecrets: true },
-      ...(config.security ?? {}),
     },
     agent,
   };
@@ -130,29 +135,16 @@ async function applySlack(
 // ---------------------------------------------------------------------------
 
 type CollectorsDraft = {
-  appStore?: { keyId: string; issuerId: string; privateKey: typeof KEYCHAIN_SENTINEL };
-  playStore?: { serviceAccountJson: typeof KEYCHAIN_SENTINEL };
-  eodinSdk?: { apiKey: typeof KEYCHAIN_SENTINEL };
-  eodinGrowth?: { token: typeof KEYCHAIN_SENTINEL };
-  asoMobile?: { apiKey: typeof KEYCHAIN_SENTINEL };
-  youtube?: { apiKey: typeof KEYCHAIN_SENTINEL };
-  ardenTts?: { endpoint: string };
+  appStore?: { keyId: string; issuerId: string; privateKey: typeof KEYCHAIN_SENTINEL } | undefined;
+  playStore?: { serviceAccountJson: typeof KEYCHAIN_SENTINEL } | undefined;
+  eodinSdk?: { apiKey: typeof KEYCHAIN_SENTINEL } | undefined;
+  eodinGrowth?: { token: typeof KEYCHAIN_SENTINEL } | undefined;
+  asoMobile?: { apiKey: typeof KEYCHAIN_SENTINEL } | undefined;
+  youtube?: { apiKey: typeof KEYCHAIN_SENTINEL } | undefined;
+  ardenTts?: { endpoint: string } | undefined;
 };
 
-async function askEnable(label: string, hint: string): Promise<boolean> {
-  const { enable } = await inquirer.prompt<{ enable: boolean }>([
-    {
-      type: "confirm",
-      name: "enable",
-      message: `Configure ${label}? (${hint})`,
-      default: false,
-    },
-  ]);
-  return enable;
-}
-
 async function askAppStore(): Promise<CollectorsDraft["appStore"] | undefined> {
-  if (!(await askEnable("App Store Connect", "iOS ASO + reviews"))) return undefined;
   const answers = await inquirer.prompt<{
     keyId: string;
     issuerId: string;
@@ -172,7 +164,6 @@ async function askAppStore(): Promise<CollectorsDraft["appStore"] | undefined> {
 }
 
 async function askPlayStore(): Promise<CollectorsDraft["playStore"] | undefined> {
-  if (!(await askEnable("Google Play", "Android reviews + metadata"))) return undefined;
   const { serviceAccountJson } = await inquirer.prompt<{ serviceAccountJson: string }>([
     {
       type: "editor",
@@ -191,8 +182,7 @@ async function askPlayStore(): Promise<CollectorsDraft["playStore"] | undefined>
   return { serviceAccountJson: KEYCHAIN_SENTINEL };
 }
 
-async function askSecret(label: string, keychainKey: string): Promise<typeof KEYCHAIN_SENTINEL | undefined> {
-  if (!(await askEnable(label, ""))) return undefined;
+async function askSecret(label: string, keychainKey: string): Promise<typeof KEYCHAIN_SENTINEL> {
   const { value } = await inquirer.prompt<{ value: string }>([
     { type: "password", name: "value", message: `${label} key/token:`, mask: "*", validate: (v: string) => v.length > 0 || "Required" },
   ]);
@@ -200,8 +190,7 @@ async function askSecret(label: string, keychainKey: string): Promise<typeof KEY
   return KEYCHAIN_SENTINEL;
 }
 
-async function askArdenTts(): Promise<CollectorsDraft["ardenTts"] | undefined> {
-  if (!(await askEnable("Arden TTS", "voiceover for short-form scripts"))) return undefined;
+async function askArdenTts(): Promise<CollectorsDraft["ardenTts"]> {
   const { endpoint } = await inquirer.prompt<{ endpoint: string }>([
     {
       type: "input",
@@ -218,40 +207,82 @@ async function askArdenTts(): Promise<CollectorsDraft["ardenTts"] | undefined> {
   return { endpoint: endpoint.trim() };
 }
 
+type CollectorChoice = "appStore" | "playStore" | "eodinSdk" | "eodinGrowth" | "asoMobile" | "youtube" | "ardenTts";
+
+const COLLECTOR_CHOICES: Array<{ name: string; value: CollectorChoice; hint: string }> = [
+  { name: "App Store Connect", value: "appStore", hint: "iOS ASO + reviews — appstoreconnect.apple.com > Keys" },
+  { name: "Google Play", value: "playStore", hint: "Android reviews — console.cloud.google.com > Service Accounts" },
+  { name: "Eodin SDK", value: "eodinSdk", hint: "installs / funnel / cohort — Eodin dashboard > API Keys" },
+  { name: "Eodin Growth", value: "eodinGrowth", hint: "blog / SEO / GA4 — GROWTH_AGENT_TOKEN" },
+  { name: "ASOMobile", value: "asoMobile", hint: "keyword rankings — asomobile.net > Settings > API" },
+  { name: "YouTube Data API", value: "youtube", hint: "Shorts performance — console.cloud.google.com > YouTube API" },
+  { name: "Arden TTS", value: "ardenTts", hint: "voiceover — your self-hosted endpoint URL" },
+];
+
 async function applyCollectors(
   config: Partial<AdariaConfig>,
 ): Promise<Partial<AdariaConfig>> {
   console.log("\n--- Data Collectors ---");
-  console.log("Each collector is optional. Skip any you don't use yet.");
-  console.log("You can add them later with `adaria-ai init collectors`.\n");
-  console.log("Where to get each key:");
-  console.log("  App Store Connect:  https://appstoreconnect.apple.com > Users and Access > Keys");
-  console.log("  Google Play:        https://console.cloud.google.com > Service Accounts > Create Key (JSON)");
-  console.log("  Eodin SDK:          Your Eodin dashboard > Settings > API Keys");
-  console.log("  Eodin Growth:       Same dashboard, GROWTH_AGENT_TOKEN");
-  console.log("  ASOMobile:          https://asomobile.net > Settings > API");
-  console.log("  YouTube:            https://console.cloud.google.com > APIs > YouTube Data API v3 > Create Credentials");
-  console.log("  Arden TTS:          Your self-hosted Arden TTS endpoint URL\n");
+  console.log("Select the data sources you want to configure.");
+  console.log("You can add more later with `adaria-ai init collectors`.\n");
 
   const existing = (config.collectors ?? {}) as CollectorsDraft;
+  const alreadyConfigured = Object.keys(existing).filter((k) => existing[k as keyof CollectorsDraft] != null);
+
+  const { selected } = await inquirer.prompt<{ selected: CollectorChoice[] }>([
+    {
+      type: "checkbox",
+      name: "selected",
+      message: "Which collectors do you want to configure? (space to toggle, enter to confirm)",
+      choices: COLLECTOR_CHOICES.map((c) => ({
+        name: `${c.name} — ${c.hint}`,
+        value: c.value,
+        checked: alreadyConfigured.includes(c.value),
+      })),
+    },
+  ]);
+
   const draft: CollectorsDraft = { ...existing };
 
-  const ap = await askAppStore();
-  if (ap) draft.appStore = ap;
-  const ps = await askPlayStore();
-  if (ps) draft.playStore = ps;
+  for (const choice of selected) {
+    // Skip if already configured and not re-selected
+    if (existing[choice] && alreadyConfigured.includes(choice)) {
+      const { reconfigure } = await inquirer.prompt<{ reconfigure: boolean }>([
+        { type: "confirm", name: "reconfigure", message: `${choice} is already configured. Reconfigure?`, default: false },
+      ]);
+      if (!reconfigure) continue;
+    }
 
-  const es = await askSecret("Eodin SDK (installs/funnel/cohort)", KEYCHAIN_KEYS.eodinSdkApiKey);
-  if (es) draft.eodinSdk = { apiKey: es };
-  const eg = await askSecret("Eodin Growth (blog/SEO/GA4)", KEYCHAIN_KEYS.eodinGrowthToken);
-  if (eg) draft.eodinGrowth = { token: eg };
-  const am = await askSecret("ASOMobile (keyword rankings)", KEYCHAIN_KEYS.asoMobileApiKey);
-  if (am) draft.asoMobile = { apiKey: am };
-  const yt = await askSecret("YouTube Data API", KEYCHAIN_KEYS.youtubeApiKey);
-  if (yt) draft.youtube = { apiKey: yt };
+    console.log(`\nConfiguring ${COLLECTOR_CHOICES.find((c) => c.value === choice)?.name ?? choice}...`);
 
-  const at = await askArdenTts();
-  if (at) draft.ardenTts = at;
+    switch (choice) {
+      case "appStore": {
+        const r = await askAppStore();
+        if (r) draft.appStore = r;
+        break;
+      }
+      case "playStore": {
+        const r = await askPlayStore();
+        if (r) draft.playStore = r;
+        break;
+      }
+      case "eodinSdk":
+        draft.eodinSdk = { apiKey: await askSecret("Eodin SDK API key", KEYCHAIN_KEYS.eodinSdkApiKey) };
+        break;
+      case "eodinGrowth":
+        draft.eodinGrowth = { token: await askSecret("Eodin Growth token", KEYCHAIN_KEYS.eodinGrowthToken) };
+        break;
+      case "asoMobile":
+        draft.asoMobile = { apiKey: await askSecret("ASOMobile API key", KEYCHAIN_KEYS.asoMobileApiKey) };
+        break;
+      case "youtube":
+        draft.youtube = { apiKey: await askSecret("YouTube API key", KEYCHAIN_KEYS.youtubeApiKey) };
+        break;
+      case "ardenTts":
+        draft.ardenTts = await askArdenTts();
+        break;
+    }
+  }
 
   return { ...config, collectors: draft as CollectorsConfig };
 }
@@ -261,16 +292,15 @@ async function applyCollectors(
 // ---------------------------------------------------------------------------
 
 type SocialDraft = {
-  twitter?: { apiKey: typeof KEYCHAIN_SENTINEL; apiSecret: typeof KEYCHAIN_SENTINEL; accessToken: typeof KEYCHAIN_SENTINEL; accessTokenSecret: typeof KEYCHAIN_SENTINEL };
-  facebook?: { appId: string; appSecret: typeof KEYCHAIN_SENTINEL; accessToken: typeof KEYCHAIN_SENTINEL; pageId: string };
-  threads?: { accessToken: typeof KEYCHAIN_SENTINEL; userId: string };
-  tiktok?: { clientKey: string; clientSecret: typeof KEYCHAIN_SENTINEL; accessToken: typeof KEYCHAIN_SENTINEL };
-  youtube?: { accessToken: typeof KEYCHAIN_SENTINEL; channelId: string };
-  linkedin?: { accessToken: typeof KEYCHAIN_SENTINEL; organizationId: string };
+  twitter?: { apiKey: typeof KEYCHAIN_SENTINEL; apiSecret: typeof KEYCHAIN_SENTINEL; accessToken: typeof KEYCHAIN_SENTINEL; accessTokenSecret: typeof KEYCHAIN_SENTINEL } | undefined;
+  facebook?: { appId: string; appSecret: typeof KEYCHAIN_SENTINEL; accessToken: typeof KEYCHAIN_SENTINEL; pageId: string } | undefined;
+  threads?: { accessToken: typeof KEYCHAIN_SENTINEL; userId: string } | undefined;
+  tiktok?: { clientKey: string; clientSecret: typeof KEYCHAIN_SENTINEL; accessToken: typeof KEYCHAIN_SENTINEL } | undefined;
+  youtube?: { accessToken: typeof KEYCHAIN_SENTINEL; channelId: string } | undefined;
+  linkedin?: { accessToken: typeof KEYCHAIN_SENTINEL; organizationId: string } | undefined;
 };
 
-async function askTwitter(): Promise<SocialDraft["twitter"] | undefined> {
-  if (!(await askEnable("Twitter/X", "tweet marketing content"))) return undefined;
+async function askTwitter(): Promise<SocialDraft["twitter"]> {
   const answers = await inquirer.prompt<{ apiKey: string; apiSecret: string; accessToken: string; accessTokenSecret: string }>([
     { type: "password", name: "apiKey", message: "API Key:", mask: "*", validate: (v: string) => v.length > 0 || "Required" },
     { type: "password", name: "apiSecret", message: "API Secret:", mask: "*", validate: (v: string) => v.length > 0 || "Required" },
@@ -284,8 +314,7 @@ async function askTwitter(): Promise<SocialDraft["twitter"] | undefined> {
   return { apiKey: KEYCHAIN_SENTINEL, apiSecret: KEYCHAIN_SENTINEL, accessToken: KEYCHAIN_SENTINEL, accessTokenSecret: KEYCHAIN_SENTINEL };
 }
 
-async function askFacebook(): Promise<SocialDraft["facebook"] | undefined> {
-  if (!(await askEnable("Facebook", "page posts"))) return undefined;
+async function askFacebook(): Promise<SocialDraft["facebook"]> {
   const answers = await inquirer.prompt<{ appId: string; appSecret: string; accessToken: string; pageId: string }>([
     { type: "input", name: "appId", message: "App ID:", validate: (v: string) => v.length > 0 || "Required" },
     { type: "password", name: "appSecret", message: "App Secret:", mask: "*", validate: (v: string) => v.length > 0 || "Required" },
@@ -297,8 +326,7 @@ async function askFacebook(): Promise<SocialDraft["facebook"] | undefined> {
   return { appId: answers.appId, appSecret: KEYCHAIN_SENTINEL, accessToken: KEYCHAIN_SENTINEL, pageId: answers.pageId };
 }
 
-async function askThreads(): Promise<SocialDraft["threads"] | undefined> {
-  if (!(await askEnable("Threads", "Meta Threads posts"))) return undefined;
+async function askThreads(): Promise<SocialDraft["threads"]> {
   const answers = await inquirer.prompt<{ accessToken: string; userId: string }>([
     { type: "password", name: "accessToken", message: "Access Token:", mask: "*", validate: (v: string) => v.length > 0 || "Required" },
     { type: "input", name: "userId", message: "User ID:", validate: (v: string) => v.length > 0 || "Required" },
@@ -307,8 +335,7 @@ async function askThreads(): Promise<SocialDraft["threads"] | undefined> {
   return { accessToken: KEYCHAIN_SENTINEL, userId: answers.userId };
 }
 
-async function askTikTok(): Promise<SocialDraft["tiktok"] | undefined> {
-  if (!(await askEnable("TikTok", "content posting (requires app review)"))) return undefined;
+async function askTikTok(): Promise<SocialDraft["tiktok"]> {
   const answers = await inquirer.prompt<{ clientKey: string; clientSecret: string; accessToken: string }>([
     { type: "input", name: "clientKey", message: "Client Key:", validate: (v: string) => v.length > 0 || "Required" },
     { type: "password", name: "clientSecret", message: "Client Secret:", mask: "*", validate: (v: string) => v.length > 0 || "Required" },
@@ -319,8 +346,7 @@ async function askTikTok(): Promise<SocialDraft["tiktok"] | undefined> {
   return { clientKey: answers.clientKey, clientSecret: KEYCHAIN_SENTINEL, accessToken: KEYCHAIN_SENTINEL };
 }
 
-async function askYouTubeSocial(): Promise<SocialDraft["youtube"] | undefined> {
-  if (!(await askEnable("YouTube Community", "community posts"))) return undefined;
+async function askYouTubeSocial(): Promise<SocialDraft["youtube"]> {
   const answers = await inquirer.prompt<{ accessToken: string; channelId: string }>([
     { type: "password", name: "accessToken", message: "OAuth Access Token:", mask: "*", validate: (v: string) => v.length > 0 || "Required" },
     { type: "input", name: "channelId", message: "Channel ID (UC…):", validate: (v: string) => v.length > 0 || "Required" },
@@ -329,8 +355,7 @@ async function askYouTubeSocial(): Promise<SocialDraft["youtube"] | undefined> {
   return { accessToken: KEYCHAIN_SENTINEL, channelId: answers.channelId };
 }
 
-async function askLinkedIn(): Promise<SocialDraft["linkedin"] | undefined> {
-  if (!(await askEnable("LinkedIn", "organization page posts"))) return undefined;
+async function askLinkedIn(): Promise<SocialDraft["linkedin"]> {
   const answers = await inquirer.prompt<{ accessToken: string; organizationId: string }>([
     { type: "password", name: "accessToken", message: "Access Token:", mask: "*", validate: (v: string) => v.length > 0 || "Required" },
     { type: "input", name: "organizationId", message: "Organization ID:", validate: (v: string) => v.length > 0 || "Required" },
@@ -339,38 +364,73 @@ async function askLinkedIn(): Promise<SocialDraft["linkedin"] | undefined> {
   return { accessToken: KEYCHAIN_SENTINEL, organizationId: answers.organizationId };
 }
 
+type SocialChoice = "twitter" | "facebook" | "threads" | "tiktok" | "youtube" | "linkedin";
+
+const SOCIAL_CHOICES: Array<{ name: string; value: SocialChoice; hint: string }> = [
+  { name: "Twitter/X", value: "twitter", hint: "developer.twitter.com > Keys and Tokens" },
+  { name: "Facebook", value: "facebook", hint: "developers.facebook.com > App Dashboard" },
+  { name: "Threads", value: "threads", hint: "developers.facebook.com > Threads API" },
+  { name: "TikTok", value: "tiktok", hint: "developers.tiktok.com (requires app review)" },
+  { name: "YouTube Community", value: "youtube", hint: "console.cloud.google.com > OAuth 2.0" },
+  { name: "LinkedIn", value: "linkedin", hint: "developer.linkedin.com > My Apps > Auth" },
+];
+
 async function applySocial(
   config: Partial<AdariaConfig>,
 ): Promise<Partial<AdariaConfig>> {
   console.log("\n--- Social Media Platforms ---");
-  console.log("Configure platforms for automated marketing posts.");
-  console.log("You can add them later with `adaria-ai init social`.\n");
-  console.log("Where to get each key:");
-  console.log("  Twitter/X:   https://developer.twitter.com > Dashboard > Keys and Tokens");
-  console.log("               Need: API Key, API Secret, Access Token, Access Token Secret");
-  console.log("  Facebook:    https://developers.facebook.com > My Apps > App Dashboard");
-  console.log("               Need: App ID, App Secret, Page Access Token, Page ID");
-  console.log("  Threads:     https://developers.facebook.com > Threads API > Access Token");
-  console.log("  TikTok:      https://developers.tiktok.com > Manage Apps > Client Key/Secret");
-  console.log("               Note: Content Posting API requires app review approval");
-  console.log("  YouTube:     https://console.cloud.google.com > OAuth 2.0 > Access Token");
-  console.log("  LinkedIn:    https://developer.linkedin.com > My Apps > Auth > Access Token\n");
+  console.log("Select platforms for automated marketing posts.\n");
 
   const existing = (config.social ?? {}) as SocialDraft;
+  const alreadyConfigured = Object.keys(existing).filter((k) => existing[k as keyof SocialDraft] != null);
+
+  const { selected } = await inquirer.prompt<{ selected: SocialChoice[] }>([
+    {
+      type: "checkbox",
+      name: "selected",
+      message: "Which social platforms? (space to toggle, enter to confirm)",
+      choices: SOCIAL_CHOICES.map((c) => ({
+        name: `${c.name} — ${c.hint}`,
+        value: c.value,
+        checked: alreadyConfigured.includes(c.value),
+      })),
+    },
+  ]);
+
   const draft: SocialDraft = { ...existing };
 
-  const tw = await askTwitter();
-  if (tw) draft.twitter = tw;
-  const fb = await askFacebook();
-  if (fb) draft.facebook = fb;
-  const th = await askThreads();
-  if (th) draft.threads = th;
-  const tk = await askTikTok();
-  if (tk) draft.tiktok = tk;
-  const yt = await askYouTubeSocial();
-  if (yt) draft.youtube = yt;
-  const li = await askLinkedIn();
-  if (li) draft.linkedin = li;
+  for (const choice of selected) {
+    if (existing[choice] && alreadyConfigured.includes(choice)) {
+      const { reconfigure } = await inquirer.prompt<{ reconfigure: boolean }>([
+        { type: "confirm", name: "reconfigure", message: `${choice} is already configured. Reconfigure?`, default: false },
+      ]);
+      if (!reconfigure) continue;
+    }
+
+    const label = SOCIAL_CHOICES.find((c) => c.value === choice)?.name ?? choice;
+    console.log(`\nConfiguring ${label}...`);
+
+    switch (choice) {
+      case "twitter":
+        draft.twitter = await askTwitter();
+        break;
+      case "facebook":
+        draft.facebook = await askFacebook();
+        break;
+      case "threads":
+        draft.threads = await askThreads();
+        break;
+      case "tiktok":
+        draft.tiktok = await askTikTok();
+        break;
+      case "youtube":
+        draft.youtube = await askYouTubeSocial();
+        break;
+      case "linkedin":
+        draft.linkedin = await askLinkedIn();
+        break;
+    }
+  }
 
   return { ...config, social: draft as SocialConfig };
 }
@@ -444,7 +504,7 @@ export async function runInit(section?: InitSection): Promise<void> {
   let config: Partial<AdariaConfig> = {};
   if (await configExists()) {
     try {
-      config = await loadConfig() as Partial<AdariaConfig>;
+      config = await loadRawConfig() as Partial<AdariaConfig>;
       if (!section) {
         console.log(`Existing config at ${CONFIG_PATH} will be merged.\n`);
       }
@@ -470,6 +530,16 @@ export async function runInit(section?: InitSection): Promise<void> {
         config = await applySocial(config);
         break;
     }
+  }
+
+  // Guard: section-only init on a fresh install requires Slack first
+  if (section && !config.slack) {
+    console.error(
+      `\nSlack is not configured yet. Run "adaria-ai init slack" first,` +
+      ` or "adaria-ai init" for full setup.`,
+    );
+    process.exitCode = 1;
+    return;
   }
 
   // Ensure required defaults exist

@@ -306,7 +306,14 @@ CI) are listed at the end.
   - [x] YouTube: accessToken, channelId
   - [x] LinkedIn: accessToken, organizationId
   - [x] 11 KEYCHAIN_KEYS entries added for social secrets
-- [ ] Extend `src/cli/init.ts` — social platform credential wizard (6 y/n gated blocks) — deferred to M7
+- [x] Redesign `src/cli/init.ts` — modular sections + multi-select checkboxes:
+  - [x] `adaria-ai init` — full guided (Slack → Collectors → Social)
+  - [x] `adaria-ai init slack|collectors|social` — section-specific
+  - [x] Multi-select checkbox for collectors (7 options) and social (6 options)
+  - [x] Existing config merged, not overwritten
+  - [x] Setup guide URLs for each credential
+  - [x] Summary table at the end
+  - [x] Social platform credential wizard (6 platforms)
 - [x] Add `social_posts` table to `src/db/schema.ts`:
   - [x] Columns: id, app_id, platform, post_id, post_url, content, image_url, status, posted_at
   - [x] Migration v6, CHECK constraint on platform + status
