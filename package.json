@@ -22,9 +22,10 @@
     "build": "tsc -p tsconfig.build.json",
     "dev": "tsc -p tsconfig.build.json --watch",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src/ tests/",
+    "lint": "eslint src/ tests/ scripts/",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
+    "smoke:collectors": "tsx scripts/smoke-collectors.ts",
     "prepublishOnly": "npm run build && npm run lint && npm test"
   },
   "keywords": [
@@ -48,6 +49,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.6.0",
     "eslint": "^9.39.4",
+    "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.58.1",
     "vitest": "^3.2.4"

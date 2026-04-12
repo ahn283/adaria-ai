@@ -125,12 +125,12 @@ CI) are listed at the end.
 - [x] Port `src/collectors/youtube.ts` + test (API key in querystring redacted on both error paths; Shorts filter tightened to 60s default with `maxDurationSeconds` override; see review-2026-04-12-m2-batch4-collectors.md)
 - [x] Port `src/collectors/arden-tts.ts` + test (constructor enforces http(s) URL scheme so mis-typed endpoints fail loudly; `synthesizeBatch` returns `{ successes, failures }` with per-failure `statusCode`)
 - [x] Add return-type interfaces for each collector in `src/types/` (`StoreReview`, `AppStoreLocalization`, `EodinSummaryRow/FunnelData/Cohort`, `AsoKeywordRanking/Suggestion/CompetitorInfo`, `BlogPostDraft/Update/ListOptions/ListResponse`, `FridgifyRecipe/CascadeResult`, `YouTubeVideoStats` — see `src/types/collectors.ts`)
-- [ ] Write `scripts/smoke-collectors.ts` — hits each API, prints sample output
-- [ ] Run smoke test once manually against real APIs
+- [x] Write `scripts/smoke-collectors.ts` — hits each API, prints sample output (runs via `npm run smoke:collectors` through `tsx`; env-var driven so no `~/.adaria/config.yaml` dependency — M3 will rewire this through the config loader)
+- [ ] Run smoke test once manually against real APIs (requires live credentials — not doable from automation; dry run with no creds verified 8 skip / 0 error)
 
 **Exit criteria verification:**
-- [ ] `npm test` passes with all collector tests
-- [ ] Smoke test prints non-empty sample for every collector
+- [x] `npm test` passes with all collector tests (340 total, 76 dedicated collector tests across 8 files)
+- [ ] Smoke test prints non-empty sample for every collector (manual, pending live credentials)
 
 ## M3 — DB + config port (~0.5 day)
 
@@ -413,7 +413,7 @@ CI) are listed at the end.
 |-----------|:---------:|--------|---------|-----------|
 | M0 Bootstrap | 0.5 | ✅ | 2026-04-12 | 2026-04-12 |
 | M1 Runtime import | 1.5 | 🟨 | 2026-04-12 | — (code + tests landed; awaiting manual Slack smoke test per exit-criteria section) |
-| M2 Collectors | 1.0 | 🟨 | 2026-04-12 | — (batch 3/4 landed: +eodin-blog, fridgify-recipes) |
+| M2 Collectors | 1.0 | 🟨 | 2026-04-12 | — (all 8 collectors ported + smoke script; last item is manual smoke run against live creds) |
 | M3 DB + config | 0.5 | ⬜ | — | — |
 | M4 ASO skill | 1.5 | ⬜ | — | — |
 | M5 Remaining skills | 2.0 | ⬜ | — | — |
