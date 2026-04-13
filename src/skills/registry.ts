@@ -22,6 +22,7 @@ import {
   markdownToHtml,
   estimateReadTime,
 } from "../collectors/eodin-blog.js";
+import { FridgifyRecipesCollector } from "../collectors/fridgify-recipes.js";
 import type { AdariaConfig } from "../config/schema.js";
 
 /**
@@ -71,15 +72,16 @@ export function createProductionRegistry(
 
   const eodinGrowthToken = config.collectors.eodinGrowth?.token;
   registry.register(
-    new SeoBlogSkill(
-      eodinGrowthToken
+    new SeoBlogSkill({
+      ...(eodinGrowthToken
         ? {
             blogPublisher: new EodinBlogPublisher({ token: eodinGrowthToken }),
             markdownToHtml,
             estimateReadTime,
           }
-        : {},
-    ),
+        : {}),
+      recipesCollector: new FridgifyRecipesCollector(),
+    }),
   );
   registry.register(new ShortFormSkill({}));
 

@@ -15,7 +15,8 @@ import type {
   ApprovalItem,
 } from "../types/skill.js";
 import type { AppConfig } from "../config/apps-schema.js";
-import type { BlogCategory, BlogPostDraft, FridgifyRecipe } from "../types/collectors.js";
+import type { BlogCategory, BlogPostDraft, FridgifyCascadeResult, FridgifyRecipe } from "../types/collectors.js";
+import type { CascadeOptions } from "../collectors/fridgify-recipes.js";
 import { insertBlogPost } from "../db/queries.js";
 import { preparePrompt } from "../prompts/loader.js";
 import { warn as logWarn, info as logInfo } from "../utils/logger.js";
@@ -33,7 +34,7 @@ export interface SeoBlogSkillDeps {
     publish: (slug: string) => Promise<unknown>;
   };
   recipesCollector?: {
-    getPopularWithCascade: (opts: { metric: string; limit: number; minResults: number }) => Promise<{ satisfied: boolean; rows: FridgifyRecipe[]; period: string }>;
+    getPopularWithCascade: (opts?: CascadeOptions) => Promise<FridgifyCascadeResult>;
   };
   markdownToHtml?: (md: string) => string;
   estimateReadTime?: (text: string) => string;
