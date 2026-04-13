@@ -17,6 +17,11 @@ import { ShortFormSkill } from "./short-form.js";
 import { SdkRequestSkill } from "./sdk-request.js";
 import { ContentSkill } from "./content.js";
 import { SocialPublishSkill } from "./social-publish.js";
+import {
+  EodinBlogPublisher,
+  markdownToHtml,
+  estimateReadTime,
+} from "../collectors/eodin-blog.js";
 import type { AdariaConfig } from "../config/schema.js";
 
 /**
@@ -64,7 +69,18 @@ export function createProductionRegistry(
     }),
   );
 
-  registry.register(new SeoBlogSkill({}));
+  const eodinGrowthToken = config.collectors.eodinGrowth?.token;
+  registry.register(
+    new SeoBlogSkill(
+      eodinGrowthToken
+        ? {
+            blogPublisher: new EodinBlogPublisher({ token: eodinGrowthToken }),
+            markdownToHtml,
+            estimateReadTime,
+          }
+        : {},
+    ),
+  );
   registry.register(new ShortFormSkill({}));
 
   // Skills without external deps

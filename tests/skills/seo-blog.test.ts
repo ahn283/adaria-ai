@@ -63,7 +63,7 @@ function createMockDeps(): SeoBlogSkillDeps {
       }),
     },
     markdownToHtml: (md: string) => `<p>${md}</p>`,
-    estimateReadTime: () => 5,
+    estimateReadTime: () => "1 min read",
   };
 }
 

@@ -9,35 +9,37 @@
 import type { Skill } from "./index.js";
 import { parseAppNameFromCommand } from "./index.js";
 import type {
+  ExecutableSkill,
   SkillContext,
   SkillResult,
   ApprovalItem,
 } from "../types/skill.js";
 import type { AppConfig } from "../config/apps-schema.js";
-import type { FridgifyRecipe } from "../types/collectors.js";
+import type { BlogCategory, BlogPostDraft, FridgifyRecipe } from "../types/collectors.js";
 import { insertBlogPost } from "../db/queries.js";
 import { preparePrompt } from "../prompts/loader.js";
 import { warn as logWarn, info as logInfo } from "../utils/logger.js";
 
 const MAX_FIELD_LEN = 500;
 const MAX_INGREDIENT_LEN = 120;
+const VALID_CATEGORIES: ReadonlySet<string> = new Set(["Philosophy", "Product", "Technology", "Insights", "Ethics", "Design"]);
 const MAX_INSTRUCTION_LEN = 400;
 const NUTRITION_SENTINEL = { calories: 350, fat: 12, protein: 20, carbohydrates: 40 };
 
 export interface SeoBlogSkillDeps {
   blogPublisher?: {
     listSlugs: () => Promise<string[]>;
-    create: (post: { slug: string; title: string; description: string; category: string; content: string; readTime: number }) => Promise<{ id?: string }>;
-    publish: (slug: string) => Promise<void>;
+    create: (post: BlogPostDraft) => Promise<unknown>;
+    publish: (slug: string) => Promise<unknown>;
   };
   recipesCollector?: {
     getPopularWithCascade: (opts: { metric: string; limit: number; minResults: number }) => Promise<{ satisfied: boolean; rows: FridgifyRecipe[]; period: string }>;
   };
   markdownToHtml?: (md: string) => string;
-  estimateReadTime?: (text: string) => number;
+  estimateReadTime?: (text: string) => string;
 }
 
-export class SeoBlogSkill implements Skill {
+export class SeoBlogSkill implements Skill, ExecutableSkill {
   readonly name = "seo-blog";
   readonly commands = ["blog"] as const;
 
@@ -173,6 +175,28 @@ export class SeoBlogSkill implements Skill {
   }
 
   /**
+   * ExecutableSkill entry point — called by core.ts on approval.
+   */
+  async executePost(ctx: SkillContext, payload: unknown): Promise<void> {
+    const raw = Array.isArray(payload) ? payload : [payload];
+    const posts = raw.filter(
+      (p): p is { slug: string; title: string; description?: string; category?: string; body?: string; sourceRecipeIds?: string[] } =>
+        typeof p === "object" && p !== null &&
+        typeof (p as Record<string, unknown>)["slug"] === "string" &&
+        typeof (p as Record<string, unknown>)["title"] === "string",
+    );
+    if (posts.length === 0) {
+      logWarn("[seo-blog] executePost: no valid posts in payload");
+      return;
+    }
+    const results = await this.publishApprovedPosts(ctx, posts);
+    const failed = results.filter((r) => r.status === "failed");
+    if (failed.length > 0) {
+      throw new Error(`Blog publish failed for: ${failed.map((f) => f.slug).join(", ")}`);
+    }
+  }
+
+  /**
    * Publish approved posts. Called after approval in orchestrator (M6).
    */
   async publishApprovedPosts(
@@ -199,7 +223,7 @@ export class SeoBlogSkill implements Skill {
           slug: post.slug,
           title: post.title,
           description: post.description ?? "",
-          category: post.category ?? "Insights",
+          category: (VALID_CATEGORIES.has(post.category ?? "") ? post.category : "Insights") as BlogCategory,
           content: htmlContent,
           readTime,
         });
