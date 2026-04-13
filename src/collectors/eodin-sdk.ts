@@ -8,27 +8,24 @@ import type {
 /**
  * Eodin Analytics API collector.
  *
- * Wraps `https://api.eodin.app/api/v1/events` — read-only endpoints exposing
- * daily summaries, funnels, and cohort retention for each registered app.
+ * Read-only endpoints exposing daily summaries, funnels, and cohort retention.
+ * Base URL is provided via `config.yaml` → `collectors.eodinSdk.baseUrl`.
  *
  * Auth: X-API-Key header (not `Authorization: Bearer`).
  */
 export interface EodinSdkCollectorOptions {
+  baseUrl: string;
   apiKey: string;
 }
 
 /**
- * Test-only overrides. Kept off {@link EodinSdkCollectorOptions} so that
- * production config loaders (M3) cannot feed a user-controlled base URL into
- * the SSRF surface. The SSRF allowlist check still applies to the override —
- * defense in depth.
+ * Test-only overrides. SSRF allowlist is derived from the config baseUrl
+ * hostname — defense in depth against path-traversal attacks.
  */
 export interface EodinSdkCollectorTestHooks {
   baseUrl?: string;
 }
 
-const ALLOWED_HOSTS: ReadonlySet<string> = new Set(["api.eodin.app"]);
-const DEFAULT_BASE_URL = "https://api.eodin.app/api/v1/events";
 const ERROR_BODY_MAX_CHARS = 512;
 
 export interface EodinSummaryOptions {
@@ -68,25 +65,30 @@ type QueryParams = Record<string, QueryValue | undefined>;
 export class EodinSdkCollector {
   private readonly apiKey: string;
   private readonly baseUrl: string;
+  private readonly allowedHost: string;
   private loggedPercentCohort = false;
 
   constructor(
     options: EodinSdkCollectorOptions,
-    testHooks?: EodinSdkCollectorTestHooks
+    testHooks?: EodinSdkCollectorTestHooks,
   ) {
+    if (!options.baseUrl) {
+      throw new Error("EodinSdkCollector requires baseUrl (config.collectors.eodinSdk.baseUrl)");
+    }
     if (!options.apiKey) {
       throw new Error("EodinSdkCollector requires apiKey");
     }
     this.apiKey = options.apiKey;
-    this.baseUrl = testHooks?.baseUrl ?? DEFAULT_BASE_URL;
+    this.baseUrl = testHooks?.baseUrl ?? options.baseUrl;
+    this.allowedHost = new URL(options.baseUrl).hostname;
   }
 
   private async request<T>(path: string, params: QueryParams = {}): Promise<T> {
     const url = new URL(`${this.baseUrl}${path}`);
 
-    if (!ALLOWED_HOSTS.has(url.hostname)) {
+    if (url.hostname !== this.allowedHost) {
       throw new Error(
-        `Untrusted SDK host: ${url.hostname}. Allowed: ${[...ALLOWED_HOSTS].join(", ")}`
+        `Untrusted SDK host: ${url.hostname}. Allowed: ${this.allowedHost}`
       );
     }
 

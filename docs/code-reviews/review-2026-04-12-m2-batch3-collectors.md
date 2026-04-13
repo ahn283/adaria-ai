@@ -14,7 +14,7 @@
 
 ## Summary
 
-배치 1·2에서 확립한 패턴(`testHooks` 분리, SSRF allowlist, API key redaction, `ExternalApiError`/`RateLimitError`)이 대체로 잘 따라왔다. `EodinGrowthClient` 추상 base 클래스로 3-way 중복(JS 원본)을 묶은 것은 적절한 TS 정리이고 porting-matrix `TS port` 범위 내이다. 다만 (1) **Fridgify SSRF allowlist에 `localhost` 포함** — 배치 1·2에서 모두 강제한 단일-도메인 엄격 allowlist 패턴에서 이탈, (2) **`markdownToHtml`의 HTML 미이스케이프 + `javascript:` URL 허용** — 공격자 제어 competitor 텍스트가 M4 `SeoBlogSkill`을 거쳐 `api.eodin.app`로 POST되는 경로가 열려 있어 stored XSS 가능, (3) **Fridgify 429 처리가 `RateLimitError`가 아닌 `ExternalApiError`로 귀결** — 배치 2 I4에서 남긴 정책 결정이 이제는 실행되어야 한다, 이 세 가지는 배치 3 특유로 짚어야 한다.
+배치 1·2에서 확립한 패턴(`testHooks` 분리, SSRF allowlist, API key redaction, `ExternalApiError`/`RateLimitError`)이 대체로 잘 따라왔다. `EodinGrowthClient` 추상 base 클래스로 3-way 중복(JS 원본)을 묶은 것은 적절한 TS 정리이고 porting-matrix `TS port` 범위 내이다. 다만 (1) **Fridgify SSRF allowlist에 `localhost` 포함** — 배치 1·2에서 모두 강제한 단일-도메인 엄격 allowlist 패턴에서 이탈, (2) **`markdownToHtml`의 HTML 미이스케이프 + `javascript:` URL 허용** — 공격자 제어 competitor 텍스트가 M4 `SeoBlogSkill`을 거쳐 `<EODIN_API_HOST>`로 POST되는 경로가 열려 있어 stored XSS 가능, (3) **Fridgify 429 처리가 `RateLimitError`가 아닌 `ExternalApiError`로 귀결** — 배치 2 I4에서 남긴 정책 결정이 이제는 실행되어야 한다, 이 세 가지는 배치 3 특유로 짚어야 한다.
 
 | Severity | Count |
 |----------|-------|
@@ -42,7 +42,7 @@
     → Claude 생성 markdown (prompt injection 통과분 포함 가능)
     → markdownToHtml(...)
     → EodinBlogPublisher.create({ content: <HTML string> })
-    → POST https://api.eodin.app/api/v1/growth/blogs   ← stored XSS
+    → POST https://<EODIN_API_HOST>/api/v1/growth/blogs   ← stored XSS
   ```
 
   `FridgifyRecipe.aiDescription`도 같은 경로 (`src/types/collectors.ts:184-200`에 경고 주석 있음).

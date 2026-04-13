@@ -94,8 +94,8 @@ describe("configSchema", () => {
           serviceAccountJson:
             '{"client_email":"bot@example.iam","private_key":"-----BEGIN PRIVATE KEY-----\\nmock\\n-----END PRIVATE KEY-----"}',
         },
-        eodinSdk: { apiKey: "eodin-sdk-key" },
-        eodinGrowth: { token: "growth-token" },
+        eodinSdk: { baseUrl: "https://test.example.com/api/v1/events", apiKey: "eodin-sdk-key" },
+        eodinGrowth: { baseUrl: "https://test.example.com/api/v1/growth", token: "growth-token" },
         asoMobile: { apiKey: "aso-key" },
         youtube: { apiKey: "yt-key" },
         ardenTts: { endpoint: "https://arden.example.com" },

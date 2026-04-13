@@ -208,10 +208,10 @@
 - **Severity**: LOW
 - **Category**: Defensive programming
 - **File**: `src/collectors/eodin-sdk.ts:30`
-- **Issue**: `const ALLOWED_HOSTS = new Set<string>(["api.eodin.app"])` — `Set`은 mutable이고 `ALLOWED_HOSTS.add("evil.example.com")`이 module scope에서 호출 가능하다. 공격 경로는 아니지만(내부 호출자만 접근), `Object.freeze`나 `ReadonlySet`에 준하는 처리가 적합하다.
+- **Issue**: `const ALLOWED_HOSTS = new Set<string>(["<EODIN_API_HOST>"])` — `Set`은 mutable이고 `ALLOWED_HOSTS.add("evil.example.com")`이 module scope에서 호출 가능하다. 공격 경로는 아니지만(내부 호출자만 접근), `Object.freeze`나 `ReadonlySet`에 준하는 처리가 적합하다.
 - **Recommended fix**:
   ```typescript
-  const ALLOWED_HOSTS: ReadonlySet<string> = new Set(["api.eodin.app"]);
+  const ALLOWED_HOSTS: ReadonlySet<string> = new Set(["<EODIN_API_HOST>"]);
   ```
   타입 레벨에서 `.add`/`.delete`가 차단된다.
 

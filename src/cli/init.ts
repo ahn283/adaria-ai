@@ -24,9 +24,9 @@ import { configExists, loadRawConfig, saveConfig } from "../config/store.js";
 import { setSecret } from "../config/keychain.js";
 import { APPS_PATH, CONFIG_PATH } from "../utils/paths.js";
 
-export type InitSection = "slack" | "collectors" | "social";
+export type InitSection = "slack" | "collectors" | "social" | "services";
 
-const ALL_SECTIONS: InitSection[] = ["slack", "collectors", "social"];
+const ALL_SECTIONS: InitSection[] = ["slack", "collectors", "social", "services"];
 
 // ---------------------------------------------------------------------------
 // Slack
@@ -137,8 +137,8 @@ async function applySlack(
 type CollectorsDraft = {
   appStore?: { keyId: string; issuerId: string; privateKey: typeof KEYCHAIN_SENTINEL } | undefined;
   playStore?: { serviceAccountJson: typeof KEYCHAIN_SENTINEL } | undefined;
-  eodinSdk?: { apiKey: typeof KEYCHAIN_SENTINEL } | undefined;
-  eodinGrowth?: { token: typeof KEYCHAIN_SENTINEL } | undefined;
+  eodinSdk?: { baseUrl: string; apiKey: typeof KEYCHAIN_SENTINEL } | undefined;
+  eodinGrowth?: { baseUrl: string; token: typeof KEYCHAIN_SENTINEL } | undefined;
   fridgify?: { baseUrl: string } | undefined;
   asoMobile?: { apiKey: typeof KEYCHAIN_SENTINEL } | undefined;
   youtube?: { apiKey: typeof KEYCHAIN_SENTINEL } | undefined;
@@ -282,14 +282,22 @@ async function applyCollectors(
         if (r) draft.playStore = r;
         break;
       }
-      case "eodinSdk":
+      case "eodinSdk": {
         console.log("  Get your API key from the Eodin dashboard > Settings > API Keys\n");
-        draft.eodinSdk = { apiKey: await askSecret("Eodin SDK API key", KEYCHAIN_KEYS.eodinSdkApiKey) };
+        const { eodinSdkUrl } = await inquirer.prompt<{ eodinSdkUrl: string }>([
+          { type: "input", name: "eodinSdkUrl", message: "Eodin SDK API base URL:", validate: (v: string) => v.startsWith("https://") || "Must be an https:// URL" },
+        ]);
+        draft.eodinSdk = { baseUrl: eodinSdkUrl.trim(), apiKey: await askSecret("Eodin SDK API key", KEYCHAIN_KEYS.eodinSdkApiKey) };
         break;
-      case "eodinGrowth":
+      }
+      case "eodinGrowth": {
         console.log("  This is the GROWTH_AGENT_TOKEN from your Eodin Growth service config\n");
-        draft.eodinGrowth = { token: await askSecret("Eodin Growth token", KEYCHAIN_KEYS.eodinGrowthToken) };
+        const { eodinGrowthUrl } = await inquirer.prompt<{ eodinGrowthUrl: string }>([
+          { type: "input", name: "eodinGrowthUrl", message: "Eodin Growth API base URL:", validate: (v: string) => v.startsWith("https://") || "Must be an https:// URL" },
+        ]);
+        draft.eodinGrowth = { baseUrl: eodinGrowthUrl.trim(), token: await askSecret("Eodin Growth token", KEYCHAIN_KEYS.eodinGrowthToken) };
         break;
+      }
       case "fridgify": {
         console.log("  Enter the base URL for the Fridgify Recipes API\n");
         const { fridgifyUrl } = await inquirer.prompt<{ fridgifyUrl: string }>([
@@ -316,6 +324,79 @@ async function applyCollectors(
   }
 
   return { ...config, collectors: draft as CollectorsConfig };
+}
+
+// ---------------------------------------------------------------------------
+// Custom Services (plori, linkgo, etc.)
+// ---------------------------------------------------------------------------
+
+async function applyServices(
+  config: Partial<AdariaConfig>,
+): Promise<Partial<AdariaConfig>> {
+  console.log("\n--- Custom Service Endpoints ---");
+  console.log("Register API endpoints for your own services.");
+  console.log("These are available to skills and Mode B tools at runtime.\n");
+
+  const existing = (config.services ?? {}) as Record<string, { baseUrl: string; description?: string | undefined }>;
+  const entries = Object.entries(existing);
+
+  if (entries.length > 0) {
+    console.log("Currently registered:");
+    for (const [name, svc] of entries) {
+      console.log(`  • ${name}: ${svc.baseUrl}${svc.description ? ` — ${svc.description}` : ""}`);
+    }
+    console.log();
+  }
+
+  const draft = { ...existing } as Record<string, { baseUrl: string; description?: string | undefined }>;
+
+  let addMore = true;
+  while (addMore) {
+    const { action } = await inquirer.prompt<{ action: string }>([
+      {
+        type: "list",
+        name: "action",
+        message: "What would you like to do?",
+        choices: [
+          { name: "Add a new service", value: "add" },
+          ...(Object.keys(draft).length > 0
+            ? [{ name: "Remove a service", value: "remove" }]
+            : []),
+          { name: "Done", value: "done" },
+        ],
+      },
+    ]);
+
+    if (action === "done") {
+      addMore = false;
+    } else if (action === "add") {
+      const { svcName } = await inquirer.prompt<{ svcName: string }>([
+        { type: "input", name: "svcName", message: "Service name (e.g. plori, linkgo):", validate: (v: string) => v.trim().length > 0 || "Name is required" },
+      ]);
+      const { svcUrl } = await inquirer.prompt<{ svcUrl: string }>([
+        { type: "input", name: "svcUrl", message: `${svcName.trim()} API base URL:`, validate: (v: string) => v.startsWith("https://") || "Must be an https:// URL" },
+      ]);
+      const { svcDesc } = await inquirer.prompt<{ svcDesc: string }>([
+        { type: "input", name: "svcDesc", message: "Description (optional):", default: "" },
+      ]);
+      const key = svcName.trim().toLowerCase();
+      draft[key] = { baseUrl: svcUrl.trim(), ...(svcDesc.trim() ? { description: svcDesc.trim() } : {}) };
+      console.log(`  ✓ Added ${key}\n`);
+    } else if (action === "remove") {
+      const { toRemove } = await inquirer.prompt<{ toRemove: string }>([
+        {
+          type: "list",
+          name: "toRemove",
+          message: "Which service to remove?",
+          choices: Object.keys(draft).map((k) => ({ name: `${k}: ${draft[k]!.baseUrl}`, value: k })),
+        },
+      ]);
+      delete draft[toRemove];
+      console.log(`  ✓ Removed ${toRemove}\n`);
+    }
+  }
+
+  return { ...config, services: draft };
 }
 
 // ---------------------------------------------------------------------------
@@ -559,6 +640,9 @@ export async function runInit(section?: InitSection): Promise<void> {
         break;
       case "social":
         config = await applySocial(config);
+        break;
+      case "services":
+        config = await applyServices(config);
         break;
     }
   }

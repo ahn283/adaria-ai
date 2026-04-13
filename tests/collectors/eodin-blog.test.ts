@@ -34,7 +34,7 @@ describe("EodinBlogPublisher", () => {
   beforeEach(() => {
     mockFetch = vi.fn();
     globalThis.fetch = mockFetch as unknown as typeof fetch;
-    pub = new EodinBlogPublisher({ token: "growth-token" });
+    pub = new EodinBlogPublisher({ baseUrl: "https://test.example.com/api/v1/growth", token: "growth-token" });
   });
 
   afterEach(() => {
@@ -42,7 +42,7 @@ describe("EodinBlogPublisher", () => {
   });
 
   it("throws if token is missing", () => {
-    expect(() => new EodinBlogPublisher({ token: "" })).toThrow(
+    expect(() => new EodinBlogPublisher({ baseUrl: "https://test.example.com", token: "" })).toThrow(
       /GROWTH_AGENT_TOKEN/
     );
   });
@@ -66,7 +66,7 @@ describe("EodinBlogPublisher", () => {
 
     const call = mockFetch.mock.calls[0];
     expect(call?.[0]).toContain(
-      "https://api.eodin.app/api/v1/growth/blogs"
+      "https://test.example.com/api/v1/growth/blogs"
     );
     const init = call?.[1] as {
       method: string;
@@ -183,8 +183,8 @@ describe("EodinBlogPublisher", () => {
 
   it("rejects untrusted hosts via testHooks (SSRF defense-in-depth)", async () => {
     const bad = new EodinBlogPublisher(
-      { token: "x" },
-      { baseUrl: "https://evil.example.com/api/v1/growth" }
+      { baseUrl: "https://legit.example.com/api/v1/growth", token: "x" },
+      { baseUrl: "https://evil.example.com/api/v1/growth" },
     );
     await expect(bad.get("anything")).rejects.toThrow(/Untrusted Eodin host/);
   });
@@ -233,7 +233,7 @@ describe("EodinSeoMetrics + EodinAnalytics", () => {
       })
     );
 
-    const seo = new EodinSeoMetrics({ token: "seo-token" });
+    const seo = new EodinSeoMetrics({ baseUrl: "https://test.example.com/api/v1/growth", token: "seo-token" });
     await seo.getOverview("2026-03-01", "2026-03-31");
 
     const url = mockFetch.mock.calls[0]?.[0] as string;
@@ -251,7 +251,7 @@ describe("EodinSeoMetrics + EodinAnalytics", () => {
       })
     );
 
-    const an = new EodinAnalytics({ token: "an-token" });
+    const an = new EodinAnalytics({ baseUrl: "https://test.example.com/api/v1/growth", token: "an-token" });
     await an.getRealtime();
 
     const url = mockFetch.mock.calls[0]?.[0] as string;

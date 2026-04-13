@@ -8,7 +8,7 @@ import type {
 } from "../types/collectors.js";
 
 /**
- * Eodin Blog + SEO + Analytics API clients — target `api.eodin.app`.
+ * Eodin Blog + SEO + Analytics API clients.
  *
  * Replaces the legacy GitHub Contents API approach with direct M2M API
  * calls against the eodin.app growth endpoints. Three thin clients share
@@ -23,20 +23,18 @@ import type {
  *      every `publish` call site in M5+ skills.
  */
 export interface EodinBlogConfig {
+  baseUrl: string;
   token: string;
 }
 
 /**
- * Test-only overrides — intentionally kept off {@link EodinBlogConfig} so
- * config loaders (M3) cannot inject a user-controlled base URL. SSRF
- * allowlist still applies to the override value.
+ * Test-only overrides. SSRF allowlist is derived from the config baseUrl
+ * hostname — defense in depth against path-traversal attacks.
  */
 export interface EodinBlogTestHooks {
   baseUrl?: string;
 }
 
-const DEFAULT_BASE_URL = "https://api.eodin.app/api/v1/growth";
-const ALLOWED_HOSTS: ReadonlySet<string> = new Set(["api.eodin.app"]);
 const ERROR_BODY_MAX_CHARS = 512;
 
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
@@ -44,15 +42,22 @@ type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
 abstract class EodinGrowthClient {
   protected readonly token: string;
   protected readonly baseUrl: string;
+  private readonly allowedHost: string;
 
   constructor(config: EodinBlogConfig, testHooks?: EodinBlogTestHooks) {
+    if (!config.baseUrl) {
+      throw new Error(
+        "Eodin growth clients require baseUrl (config.collectors.eodinGrowth.baseUrl)"
+      );
+    }
     if (!config.token) {
       throw new Error(
         "Eodin growth clients require a GROWTH_AGENT_TOKEN config.token"
       );
     }
     this.token = config.token;
-    this.baseUrl = testHooks?.baseUrl ?? DEFAULT_BASE_URL;
+    this.baseUrl = testHooks?.baseUrl ?? config.baseUrl;
+    this.allowedHost = new URL(config.baseUrl).hostname;
   }
 
   protected async request<T>(
@@ -62,9 +67,9 @@ abstract class EodinGrowthClient {
   ): Promise<T> {
     const url = new URL(`${this.baseUrl}${path}`);
 
-    if (!ALLOWED_HOSTS.has(url.hostname)) {
+    if (url.hostname !== this.allowedHost) {
       throw new Error(
-        `Untrusted Eodin host: ${url.hostname}. Allowed: ${[...ALLOWED_HOSTS].join(", ")}`
+        `Untrusted Eodin host: ${url.hostname}. Allowed: ${this.allowedHost}`
       );
     }
 

@@ -70,13 +70,13 @@ export function createProductionRegistry(
     }),
   );
 
-  const eodinGrowthToken = config.collectors.eodinGrowth?.token;
+  const eodinGrowth = config.collectors.eodinGrowth;
   const fridgifyBaseUrl = config.collectors.fridgify?.baseUrl;
   registry.register(
     new SeoBlogSkill({
-      ...(eodinGrowthToken
+      ...(eodinGrowth?.baseUrl && eodinGrowth.token
         ? {
-            blogPublisher: new EodinBlogPublisher({ token: eodinGrowthToken }),
+            blogPublisher: new EodinBlogPublisher({ baseUrl: eodinGrowth.baseUrl, token: eodinGrowth.token }),
             markdownToHtml,
             estimateReadTime,
           }

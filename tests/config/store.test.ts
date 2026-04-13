@@ -125,7 +125,7 @@ describe("config store", () => {
     await saveConfig({
       ...VALID_CONFIG,
       collectors: {
-        eodinSdk: { apiKey: "plaintext-key" },
+        eodinSdk: { baseUrl: "https://test.example.com/api/v1/events", apiKey: "plaintext-key" },
         ardenTts: { endpoint: "https://arden.example.com" },
       },
     });

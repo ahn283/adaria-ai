@@ -103,10 +103,12 @@ export const playStoreCollectorConfigSchema = z.object({
 });
 
 export const eodinSdkCollectorConfigSchema = z.object({
+  baseUrl: z.string().url(),
   apiKey: z.string().min(1),
 });
 
 export const eodinGrowthCollectorConfigSchema = z.object({
+  baseUrl: z.string().url(),
   token: z.string().min(1),
 });
 
@@ -194,6 +196,19 @@ export const collectorsConfigSchema = z
   })
   .default({});
 
+// ---------------------------------------------------------------------------
+// Custom services — arbitrary name→baseUrl map for future service endpoints
+// (plori, linkgo, etc.) that don't have dedicated collectors yet.
+// ---------------------------------------------------------------------------
+
+export const customServiceSchema = z.object({
+  baseUrl: z.string().url(),
+  /** Optional description shown in `adaria-ai doctor` output. */
+  description: z.string().optional(),
+});
+
+export const servicesConfigSchema = z.record(z.string(), customServiceSchema).default({});
+
 export const configSchema = z.object({
   slack: slackConfigSchema,
   claude: claudeConfigSchema,
@@ -218,6 +233,8 @@ export const configSchema = z.object({
     webTrafficDropAlert: 0.25,
   }),
   collectors: collectorsConfigSchema,
+  /** Arbitrary service endpoints — key is the service name, value has baseUrl. */
+  services: servicesConfigSchema,
 });
 
 export type AdariaConfig = z.infer<typeof configSchema>;
@@ -229,6 +246,8 @@ export type AgentConfig = z.infer<typeof agentConfigSchema>;
 export type ThresholdsConfig = z.infer<typeof thresholdsConfigSchema>;
 export type SocialConfig = z.infer<typeof socialConfigSchema>;
 export type CollectorsConfig = z.infer<typeof collectorsConfigSchema>;
+export type CustomServiceConfig = z.infer<typeof customServiceSchema>;
+export type ServicesConfig = z.infer<typeof servicesConfigSchema>;
 export type AppStoreCollectorConfig = z.infer<
   typeof appStoreCollectorConfigSchema
 >;

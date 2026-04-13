@@ -27,7 +27,7 @@ describe("EodinSdkCollector", () => {
   beforeEach(() => {
     mockFetch = vi.fn();
     globalThis.fetch = mockFetch as unknown as typeof fetch;
-    collector = new EodinSdkCollector({ apiKey: "test-key" });
+    collector = new EodinSdkCollector({ baseUrl: "https://test.example.com/api/v1/events", apiKey: "test-key" });
   });
 
   afterEach(() => {
@@ -35,7 +35,7 @@ describe("EodinSdkCollector", () => {
   });
 
   it("throws if apiKey is missing", () => {
-    expect(() => new EodinSdkCollector({ apiKey: "" })).toThrow(
+    expect(() => new EodinSdkCollector({ baseUrl: "https://test.example.com", apiKey: "" })).toThrow(
       /requires apiKey/
     );
   });
@@ -87,7 +87,7 @@ describe("EodinSdkCollector", () => {
     );
 
     const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
-    expect(calledUrl).toContain("api.eodin.app/api/v1/events/summary");
+    expect(calledUrl).toContain("test.example.com/api/v1/events/summary");
     expect(calledUrl).toContain("app_id=fridgify");
     expect(calledUrl).toContain("start=2026-03-24");
     expect(calledUrl).toContain("end=2026-03-30");
@@ -177,8 +177,8 @@ describe("EodinSdkCollector", () => {
 
   it("rejects untrusted hosts (SSRF defense-in-depth)", async () => {
     const bad = new EodinSdkCollector(
-      { apiKey: "test-key" },
-      { baseUrl: "https://evil.example.com/api/v1/events" }
+      { baseUrl: "https://legit.example.com/api/v1/events", apiKey: "test-key" },
+      { baseUrl: "https://evil.example.com/api/v1/events" },
     );
 
     await expect(
