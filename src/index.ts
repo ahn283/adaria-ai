@@ -22,16 +22,45 @@ program
 
 program
   .command("init [section]")
-  .description("Interactive setup wizard (sections: slack, collectors, social)")
+  .description("Interactive setup wizard (sections: slack, collectors, social, services)")
   .action(async (section?: string) => {
     const { runInit } = await import("./cli/init.js");
-    const validSections = ["slack", "collectors", "social"];
+    const validSections = ["slack", "collectors", "social", "services"];
     if (section && !validSections.includes(section)) {
       console.error(`Unknown section: ${section}. Valid: ${validSections.join(", ")}`);
       process.exit(1);
     }
-    await runInit(section as "slack" | "collectors" | "social" | undefined);
+    await runInit(section as "slack" | "collectors" | "social" | "services" | undefined);
     process.exit(0);
+  });
+
+const service = program
+  .command("service")
+  .description("Manage custom service endpoints");
+
+service
+  .command("add <name> <url>")
+  .description("Register a service endpoint")
+  .option("-d, --description <desc>", "Service description")
+  .action(async (name: string, url: string, opts: { description?: string }) => {
+    const { serviceAdd } = await import("./cli/service.js");
+    await serviceAdd(name, url, opts.description);
+  });
+
+service
+  .command("list")
+  .description("List registered service endpoints")
+  .action(async () => {
+    const { serviceList } = await import("./cli/service.js");
+    await serviceList();
+  });
+
+service
+  .command("remove <name>")
+  .description("Remove a service endpoint")
+  .action(async (name: string) => {
+    const { serviceRemove } = await import("./cli/service.js");
+    await serviceRemove(name);
   });
 
 program
