@@ -139,6 +139,7 @@ type CollectorsDraft = {
   playStore?: { serviceAccountJson: typeof KEYCHAIN_SENTINEL } | undefined;
   eodinSdk?: { apiKey: typeof KEYCHAIN_SENTINEL } | undefined;
   eodinGrowth?: { token: typeof KEYCHAIN_SENTINEL } | undefined;
+  fridgify?: { baseUrl: string } | undefined;
   asoMobile?: { apiKey: typeof KEYCHAIN_SENTINEL } | undefined;
   youtube?: { apiKey: typeof KEYCHAIN_SENTINEL } | undefined;
   ardenTts?: { endpoint: string } | undefined;
@@ -221,13 +222,14 @@ async function askArdenTts(): Promise<CollectorsDraft["ardenTts"]> {
   return { endpoint: endpoint.trim() };
 }
 
-type CollectorChoice = "appStore" | "playStore" | "eodinSdk" | "eodinGrowth" | "asoMobile" | "youtube" | "ardenTts";
+type CollectorChoice = "appStore" | "playStore" | "eodinSdk" | "eodinGrowth" | "fridgify" | "asoMobile" | "youtube" | "ardenTts";
 
 const COLLECTOR_CHOICES: Array<{ name: string; value: CollectorChoice; hint: string }> = [
   { name: "App Store Connect", value: "appStore", hint: "iOS ASO + reviews — appstoreconnect.apple.com > Keys" },
   { name: "Google Play", value: "playStore", hint: "Android reviews — console.cloud.google.com > Service Accounts" },
   { name: "Eodin SDK", value: "eodinSdk", hint: "installs / funnel / cohort — Eodin dashboard > API Keys" },
   { name: "Eodin Growth", value: "eodinGrowth", hint: "blog / SEO / GA4 — GROWTH_AGENT_TOKEN" },
+  { name: "Fridgify Recipes", value: "fridgify", hint: "recipe-aware blog posts — Fridgify API base URL" },
   { name: "ASOMobile", value: "asoMobile", hint: "keyword rankings — asomobile.net > Settings > API" },
   { name: "YouTube Data API", value: "youtube", hint: "Shorts performance — console.cloud.google.com > YouTube API" },
   { name: "Arden TTS", value: "ardenTts", hint: "voiceover — your self-hosted endpoint URL" },
@@ -288,6 +290,14 @@ async function applyCollectors(
         console.log("  This is the GROWTH_AGENT_TOKEN from your Eodin Growth service config\n");
         draft.eodinGrowth = { token: await askSecret("Eodin Growth token", KEYCHAIN_KEYS.eodinGrowthToken) };
         break;
+      case "fridgify": {
+        console.log("  Enter the base URL for the Fridgify Recipes API\n");
+        const { fridgifyUrl } = await inquirer.prompt<{ fridgifyUrl: string }>([
+          { type: "input", name: "fridgifyUrl", message: "Fridgify API base URL:", validate: (v: string) => v.startsWith("https://") || "Must be an https:// URL" },
+        ]);
+        draft.fridgify = { baseUrl: fridgifyUrl.trim() };
+        break;
+      }
       case "asoMobile":
         console.log("  Get your API key from https://asomobile.net > Settings > API\n");
         draft.asoMobile = { apiKey: await askSecret("ASOMobile API key", KEYCHAIN_KEYS.asoMobileApiKey) };

@@ -114,6 +114,10 @@ export const asoMobileCollectorConfigSchema = z.object({
   apiKey: z.string().min(1),
 });
 
+export const fridgifyCollectorConfigSchema = z.object({
+  baseUrl: z.string().url(),
+});
+
 export const youtubeCollectorConfigSchema = z.object({
   apiKey: z.string().min(1),
 });
@@ -183,6 +187,7 @@ export const collectorsConfigSchema = z
     playStore: playStoreCollectorConfigSchema.optional(),
     eodinSdk: eodinSdkCollectorConfigSchema.optional(),
     eodinGrowth: eodinGrowthCollectorConfigSchema.optional(),
+    fridgify: fridgifyCollectorConfigSchema.optional(),
     asoMobile: asoMobileCollectorConfigSchema.optional(),
     youtube: youtubeCollectorConfigSchema.optional(),
     ardenTts: ardenTtsCollectorConfigSchema.optional(),

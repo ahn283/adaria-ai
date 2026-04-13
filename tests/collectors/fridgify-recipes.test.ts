@@ -43,7 +43,7 @@ describe("FridgifyRecipesCollector", () => {
   beforeEach(() => {
     mockFetch = vi.fn();
     globalThis.fetch = mockFetch as unknown as typeof fetch;
-    collector = new FridgifyRecipesCollector({ retryDelayMs: 1 });
+    collector = new FridgifyRecipesCollector({ baseUrl: "https://test.example.com", retryDelayMs: 1 });
   });
 
   afterEach(() => {
@@ -58,7 +58,7 @@ describe("FridgifyRecipesCollector", () => {
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       const url = mockFetch.mock.calls[0]?.[0] as string;
-      expect(url).toContain("https://fridgify-api.eodin.app/recipes/popular");
+      expect(url).toContain("https://test.example.com/recipes/popular");
       expect(url).toContain("period=week");
       expect(url).toContain("metric=combined");
       expect(url).toContain("limit=10");
@@ -121,8 +121,8 @@ describe("FridgifyRecipesCollector", () => {
 
     it("rejects untrusted base URL hosts via testHooks (SSRF defense)", async () => {
       const evil = new FridgifyRecipesCollector(
-        {},
-        { baseUrl: "https://evil.example.com" }
+        { baseUrl: "https://legit.example.com" },
+        { baseUrl: "https://evil.example.com" },
       );
       await expect(evil.getPopular()).rejects.toThrow(
         /Untrusted Fridgify host/

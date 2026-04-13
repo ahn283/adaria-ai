@@ -13,10 +13,12 @@ import type {
  * Thin wrapper around the Fridgify backend's public recipe endpoints that
  * power the growth agent's recipe-aware blog posts.
  *
- * - Base URL: `https://fridgify-api.eodin.app`
- * - Auth: none (public endpoints, IP rate-limited 20 req/min)
+ * Base URL is provided via `config.yaml` → `collectors.fridgify.baseUrl`.
+ * Auth: none (public endpoints, IP rate-limited 20 req/min).
  */
 export interface FridgifyRecipesCollectorOptions {
+  /** Base URL for the Fridgify Recipes API. Required. */
+  baseUrl: string;
   /** Override the rate-limit backoff window. Defaults to 60 s. */
   retryDelayMs?: number;
 }
@@ -30,11 +32,7 @@ export interface FridgifyRecipesCollectorTestHooks {
   baseUrl?: string;
 }
 
-const DEFAULT_BASE_URL = "https://fridgify-api.eodin.app";
 const DEFAULT_RETRY_DELAY_MS = 60_000;
-const ALLOWED_HOSTS: ReadonlySet<string> = new Set([
-  "fridgify-api.eodin.app",
-]);
 const CASCADE_PERIODS: readonly FridgifyPeriod[] = [
   "week",
   "month",
@@ -60,13 +58,20 @@ type QueryValue = string | number | boolean;
 
 export class FridgifyRecipesCollector {
   private readonly baseUrl: string;
+  private readonly allowedHost: string;
   private readonly retryDelayMs: number;
 
   constructor(
-    options: FridgifyRecipesCollectorOptions = {},
-    testHooks?: FridgifyRecipesCollectorTestHooks
+    options: FridgifyRecipesCollectorOptions,
+    testHooks?: FridgifyRecipesCollectorTestHooks,
   ) {
-    this.baseUrl = testHooks?.baseUrl ?? DEFAULT_BASE_URL;
+    if (!options.baseUrl) {
+      throw new Error(
+        "FridgifyRecipesCollector requires a baseUrl (config.collectors.fridgify.baseUrl)",
+      );
+    }
+    this.baseUrl = testHooks?.baseUrl ?? options.baseUrl;
+    this.allowedHost = new URL(options.baseUrl).hostname;
     this.retryDelayMs = options.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS;
   }
 
@@ -82,9 +87,9 @@ export class FridgifyRecipesCollector {
   ): Promise<T> {
     const url = new URL(`${this.baseUrl}${path}`);
 
-    if (!ALLOWED_HOSTS.has(url.hostname)) {
+    if (url.hostname !== this.allowedHost) {
       throw new Error(
-        `Untrusted Fridgify host: ${url.hostname}. Allowed: ${[...ALLOWED_HOSTS].join(", ")}`
+        `Untrusted Fridgify host: ${url.hostname}. Allowed: ${this.allowedHost}`
       );
     }
 

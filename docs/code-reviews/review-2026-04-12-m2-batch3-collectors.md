@@ -132,7 +132,7 @@
 - **Issue**: 배치 1(appstore/playstore), 배치 2(asomobile/eodin-sdk), 그리고 같은 배치의 `eodin-blog.ts:35`는 전부 **단일 프로덕션 도메인만** allowlist에 넣는다. `fridgify-recipes.ts`만 `"localhost"`를 런타임 allowlist에 포함한다. 테스트는 `testHooks.baseUrl`로 `http://localhost:...`를 주입하는 경로가 이미 존재(배치 2 M4 해결)하므로 여기서 localhost를 허용할 이유가 없다.
   ```typescript
   const ALLOWED_HOSTS: ReadonlySet<string> = new Set([
-    "fridgify-api.eodin.app",
+    "<FRIDGIFY_BASE_HOST>",
     "localhost",   // ← 제거 필요
   ]);
   ```
@@ -142,15 +142,15 @@
 - **Current code**:
   ```typescript
   const ALLOWED_HOSTS: ReadonlySet<string> = new Set([
-    "fridgify-api.eodin.app",
+    "<FRIDGIFY_BASE_HOST>",
     "localhost",
   ]);
   ```
 - **Recommended fix**:
   ```typescript
-  const ALLOWED_HOSTS: ReadonlySet<string> = new Set(["fridgify-api.eodin.app"]);
+  const ALLOWED_HOSTS: ReadonlySet<string> = new Set(["<FRIDGIFY_BASE_HOST>"]);
   ```
-  테스트가 localhost로 모킹할 필요가 있으면 `testHooks.baseUrl`로 `https://fridgify-api.eodin.app`을 유지하고 `globalThis.fetch` 모킹으로 끝낸다 (현재 `tests/collectors/fridgify-recipes.test.ts`가 이미 그 방식이라 실제 테스트 수정은 거의 없다). 기존 테스트 15개 전부 default baseUrl 사용하니 이 변경은 테스트 실패를 유발하지 않는다.
+  테스트가 localhost로 모킹할 필요가 있으면 `testHooks.baseUrl`로 `https://<FRIDGIFY_BASE_HOST>`을 유지하고 `globalThis.fetch` 모킹으로 끝낸다 (현재 `tests/collectors/fridgify-recipes.test.ts`가 이미 그 방식이라 실제 테스트 수정은 거의 없다). 기존 테스트 15개 전부 default baseUrl 사용하니 이 변경은 테스트 실패를 유발하지 않는다.
 
 ## Medium & Low Findings
 
@@ -444,7 +444,7 @@
 All HIGH + MEDIUM + cheap LOW addressed in the same working tree. Verified:
 
 - **H1** — `src/collectors/eodin-blog.ts` gained `escapeHtml` + `safeHref` + a `SAFE_URL_SCHEME` allowlist; `inlineReplacements` now escapes before inserting `<strong>`/`<em>`/`<a>`. New `markdownToHtml (security)` test block covers `<script>` escape, `javascript:` / `data:` / `vbscript:` drop, https/mailto/relative/fragment allow, and attribute-escape injection.
-- **H2** — `fridgify-recipes.ts` `ALLOWED_HOSTS` now contains only `fridgify-api.eodin.app`. Existing SSRF test still passes because the evil-URL check runs before fetch.
+- **H2** — `fridgify-recipes.ts` `ALLOWED_HOSTS` now contains only `<FRIDGIFY_BASE_HOST>`. Existing SSRF test still passes because the evil-URL check runs before fetch.
 - **M1** — `fridgify-recipes.ts` switched to `import { info as logInfo, warn as logWarn } from "../utils/logger.js"` to match the codebase convention (`core.ts`, `slack.ts`, etc.).
 - **M2** — Fridgify `request()` now throws `RateLimitError` with `retryAfterSeconds` derived from `retryDelayMs` on a persistent 429. Test renamed to `throws RateLimitError after a second 429` and asserts the instance type.
 - **M3** — `EodinGrowthClient.request` added `body !== null` guard; `EodinBlogPublisher.update` rejects empty updates objects with a dedicated test.

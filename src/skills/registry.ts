@@ -71,6 +71,7 @@ export function createProductionRegistry(
   );
 
   const eodinGrowthToken = config.collectors.eodinGrowth?.token;
+  const fridgifyBaseUrl = config.collectors.fridgify?.baseUrl;
   registry.register(
     new SeoBlogSkill({
       ...(eodinGrowthToken
@@ -80,7 +81,9 @@ export function createProductionRegistry(
             estimateReadTime,
           }
         : {}),
-      recipesCollector: new FridgifyRecipesCollector(),
+      ...(fridgifyBaseUrl
+        ? { recipesCollector: new FridgifyRecipesCollector({ baseUrl: fridgifyBaseUrl }) }
+        : {}),
     }),
   );
   registry.register(new ShortFormSkill({}));
