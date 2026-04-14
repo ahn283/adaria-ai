@@ -1,4 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { IncomingMessage } from "../../src/messenger/adapter.js";
 
 /**
@@ -292,6 +295,85 @@ describe("SlackAdapter", () => {
       expect(captured[0]?.eventTs).toBe("1700000111.222");
     });
 
+    it("forwards image attachments from a mention (M6.7 brand-profile flow)", async () => {
+      const adapter = newAdapter();
+      const captured: IncomingMessage[] = [];
+      adapter.onMessage((msg) => {
+        captured.push(msg);
+      });
+
+      await mockState.eventHandlers["app_mention"]?.({
+        event: {
+          user: "U_ALLOWED",
+          channel: "C1",
+          ts: "1700000555.666",
+          text: "<@U0BOT> 로고 받아",
+          files: [
+            {
+              url_private: "https://files.slack.com/files-pri/T-A/logo.png",
+              mimetype: "image/png",
+              name: "logo.png",
+            },
+          ],
+        },
+      });
+
+      expect(captured).toHaveLength(1);
+      expect(captured[0]?.text).toBe("로고 받아");
+      expect(captured[0]?.images).toHaveLength(1);
+      expect(captured[0]?.images?.[0]?.url).toBe(
+        "https://files.slack.com/files-pri/T-A/logo.png",
+      );
+      expect(captured[0]?.images?.[0]?.authHeader).toBe("Bearer xoxb-test");
+    });
+
+    it("accepts a mention with only an image and no text", async () => {
+      const adapter = newAdapter();
+      const captured: IncomingMessage[] = [];
+      adapter.onMessage((msg) => {
+        captured.push(msg);
+      });
+
+      await mockState.eventHandlers["app_mention"]?.({
+        event: {
+          user: "U_ALLOWED",
+          channel: "C1",
+          ts: "1700000666.777",
+          text: "<@U0BOT>",
+          files: [
+            {
+              url_private: "https://files.slack.com/files-pri/T-A/pic.jpg",
+              mimetype: "image/jpeg",
+              name: "pic.jpg",
+            },
+          ],
+        },
+      });
+
+      expect(captured).toHaveLength(1);
+      expect(captured[0]?.text).toBe("");
+      expect(captured[0]?.images).toHaveLength(1);
+    });
+
+    it("drops a bare mention with no text and no images", async () => {
+      const adapter = newAdapter();
+      const captured: IncomingMessage[] = [];
+      adapter.onMessage((msg) => {
+        captured.push(msg);
+      });
+
+      await mockState.eventHandlers["app_mention"]?.({
+        event: {
+          user: "U_ALLOWED",
+          channel: "C1",
+          ts: "1700000777.888",
+          text: "<@U0BOT>",
+        },
+      });
+
+      expect(captured).toHaveLength(0);
+    });
+
     it("dedupes a mention if the corresponding message event was already handled", async () => {
       const adapter = newAdapter();
       const captured: IncomingMessage[] = [];
@@ -410,6 +492,215 @@ describe("SlackAdapter", () => {
       expect(mockState.reactionsRemoved).toEqual([
         { channel: "C1", timestamp: "1700000000.001", name: "gear" },
       ]);
+    });
+  });
+
+  describe("downloadImage", () => {
+    let workDir: string;
+
+    beforeEach(async () => {
+      workDir = await mkdtemp(join(tmpdir(), "adaria-dl-"));
+    });
+
+    afterEach(async () => {
+      await rm(workDir, { recursive: true, force: true });
+      vi.unstubAllGlobals();
+    });
+
+    function stubFetch(
+      response: {
+        ok?: boolean;
+        status?: number;
+        statusText?: string;
+        body?: Uint8Array;
+        headers?: Record<string, string>;
+      },
+      capture?: (url: string, init: RequestInit) => void,
+    ): void {
+      const ok = response.ok ?? true;
+      const status = response.status ?? (ok ? 200 : 403);
+      const body = response.body ?? new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
+      const headers = response.headers ?? { "content-type": "image/png" };
+      const fakeFetch = (url: string, init: RequestInit): Promise<Response> => {
+        capture?.(url, init);
+        const res = {
+          ok,
+          status,
+          statusText: response.statusText ?? (ok ? "OK" : "Forbidden"),
+          headers: {
+            get(name: string): string | null {
+              return headers[name.toLowerCase()] ?? null;
+            },
+          },
+          arrayBuffer(): Promise<ArrayBuffer> {
+            return Promise.resolve(
+              body.buffer.slice(
+                body.byteOffset,
+                body.byteOffset + body.byteLength,
+              ) as ArrayBuffer,
+            );
+          },
+        };
+        return Promise.resolve(res as unknown as Response);
+      };
+      vi.stubGlobal("fetch", fakeFetch);
+    }
+
+    it("writes the image to an absolute path and sends the auth header", async () => {
+      const adapter = newAdapter();
+      const observed: { url?: string; auth?: string } = {};
+      stubFetch({}, (url, init) => {
+        observed.url = url;
+        observed.auth = (init.headers as Record<string, string>).Authorization;
+      });
+
+      const dest = join(workDir, "fridgify", "logo.png");
+      await adapter.downloadImage(
+        {
+          url: "https://files.slack.com/files-pri/T-A/logo.png",
+          mimeType: "image/png",
+          filename: "logo.png",
+          authHeader: "Bearer xoxb-test",
+        },
+        dest,
+      );
+
+      const saved = await readFile(dest);
+      expect(saved.length).toBeGreaterThan(0);
+      expect(observed.url).toBe("https://files.slack.com/files-pri/T-A/logo.png");
+      expect(observed.auth).toBe("Bearer xoxb-test");
+    });
+
+    it("rejects a relative destination path", async () => {
+      const adapter = newAdapter();
+      stubFetch({});
+      await expect(
+        adapter.downloadImage(
+          { url: "https://files.slack.com/files-pri/T-A/x.png", mimeType: "image/png", authHeader: "Bearer x" },
+          "relative/path/logo.png",
+        ),
+      ).rejects.toThrow(/must be absolute/);
+    });
+
+    it("rejects a path containing `..` traversal", async () => {
+      const adapter = newAdapter();
+      stubFetch({});
+      await expect(
+        adapter.downloadImage(
+          { url: "https://files.slack.com/files-pri/T-A/x.png", mimeType: "image/png", authHeader: "Bearer x" },
+          `${workDir}/../escape.png`,
+        ),
+      ).rejects.toThrow(/traversal/);
+    });
+
+    it("rejects attachments with a disallowed MIME", async () => {
+      const adapter = newAdapter();
+      stubFetch({});
+      await expect(
+        adapter.downloadImage(
+          { url: "https://x", mimeType: "image/gif", authHeader: "Bearer x" },
+          join(workDir, "evil.gif"),
+        ),
+      ).rejects.toThrow(/not allowed/);
+    });
+
+    it("fails closed when the server returns text/html (scope missing → HTML error page)", async () => {
+      const adapter = newAdapter();
+      stubFetch({
+        headers: { "content-type": "text/html; charset=utf-8" },
+      });
+      await expect(
+        adapter.downloadImage(
+          { url: "https://files.slack.com/files-pri/T-A/x.png", mimeType: "image/png", authHeader: "Bearer x" },
+          join(workDir, "logo.png"),
+        ),
+      ).rejects.toThrow(/content-type text\/html/);
+    });
+
+    it("rejects oversized files declared via content-length", async () => {
+      const adapter = newAdapter();
+      stubFetch({
+        headers: {
+          "content-type": "image/png",
+          "content-length": String(6 * 1024 * 1024),
+        },
+      });
+      await expect(
+        adapter.downloadImage(
+          { url: "https://files.slack.com/files-pri/T-A/x.png", mimeType: "image/png", authHeader: "Bearer x" },
+          join(workDir, "big.png"),
+        ),
+      ).rejects.toThrow(/exceeds/);
+    });
+
+    it("rejects oversized files that omit content-length", async () => {
+      const adapter = newAdapter();
+      stubFetch({
+        body: new Uint8Array(6 * 1024 * 1024),
+        headers: { "content-type": "image/png" },
+      });
+      await expect(
+        adapter.downloadImage(
+          { url: "https://files.slack.com/files-pri/T-A/x.png", mimeType: "image/png", authHeader: "Bearer x" },
+          join(workDir, "sneaky.png"),
+        ),
+      ).rejects.toThrow(/exceeds cap/);
+    });
+
+    it("rejects URLs outside the Slack host allowlist (prevents token leak)", async () => {
+      const adapter = newAdapter();
+      stubFetch({});
+      await expect(
+        adapter.downloadImage(
+          {
+            url: "https://evil.example.com/logo.png",
+            mimeType: "image/png",
+            authHeader: "Bearer xoxb-test",
+          },
+          join(workDir, "logo.png"),
+        ),
+      ).rejects.toThrow(/host evil\.example\.com not in allowlist/);
+    });
+
+    it("rejects non-https URLs", async () => {
+      const adapter = newAdapter();
+      stubFetch({});
+      await expect(
+        adapter.downloadImage(
+          {
+            url: "http://files.slack.com/files-pri/T-A/logo.png",
+            mimeType: "image/png",
+            authHeader: "Bearer xoxb-test",
+          },
+          join(workDir, "logo.png"),
+        ),
+      ).rejects.toThrow(/non-https/);
+    });
+
+    it("rejects malformed URLs", async () => {
+      const adapter = newAdapter();
+      stubFetch({});
+      await expect(
+        adapter.downloadImage(
+          {
+            url: "not-a-url",
+            mimeType: "image/png",
+            authHeader: "Bearer xoxb-test",
+          },
+          join(workDir, "logo.png"),
+        ),
+      ).rejects.toThrow(/invalid URL/);
+    });
+
+    it("surfaces HTTP errors (e.g. 403 when files:read scope is missing)", async () => {
+      const adapter = newAdapter();
+      stubFetch({ ok: false, status: 403, statusText: "Forbidden" });
+      await expect(
+        adapter.downloadImage(
+          { url: "https://files.slack.com/files-pri/T-A/x.png", mimeType: "image/png", authHeader: "Bearer x" },
+          join(workDir, "forbidden.png"),
+        ),
+      ).rejects.toThrow(/403/);
     });
   });
 });

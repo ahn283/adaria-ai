@@ -18,24 +18,41 @@ update → commit.
 
 ---
 
-## Phase 0 — Slack file download plumbing
+## Phase 0 — Slack file download plumbing ✅
 
-Commit: `feat(m6.7): plumb slack file downloads`
+Commit: `feat(m6.7): plumb slack file downloads` (TBD hash)
 
-- [ ] Extend `MessengerMessage` in `src/messenger/adapter.ts` with
-      `files?: SlackFile[]` (optional, other adapters pass `[]`)
-- [ ] Define `SlackFile` interface: `{ name, mimetype, size, url_private_download }`
-- [ ] `src/messenger/slack.ts` `#setupEventHandlers` — forward
-      `event.files ?? []` into normalised message
-- [ ] `SlackMessenger.downloadFile(url, destPath)` — streams
-      `url_private_download` to disk with bot-token auth
-- [ ] MIME whitelist (`image/png | image/jpeg | image/webp`) + 5 MB cap
-      enforced in `downloadFile`
-- [ ] Path-traversal guard: reject any `destPath` outside `brandsDir()`
-- [ ] `tests/messenger/slack-files.test.ts` — happy path, oversized file,
-      wrong MIME, 403 response, path-escape attempt
-- [ ] `npm run build && npm run lint && npm test` green
-- [ ] senior-code-reviewer pass — fix CRITICAL/HIGH
+- [x] `MessengerAdapter.downloadImage?(attachment, destPath)` added as
+      optional interface method (`src/messenger/adapter.ts`) — already
+      had `ImageAttachment` + `IncomingMessage.images` from M1, so no
+      new `SlackFile` type on the interface
+- [x] `src/messenger/slack.ts` — `SlackFile` internal interface hoisted,
+      `app_mention` handler extended to forward `event.files` into
+      `IncomingMessage.images` (DM `message` handler already did)
+- [x] `SlackAdapter.downloadImage()` — fetches `url_private`, streams
+      to disk via buffer + `writeFile`, sends bot-token auth header
+- [x] MIME whitelist (`image/png | image/jpeg | image/webp`) enforced
+      twice: on the inbound `attachment.mimeType` AND on the server
+      response `Content-Type` (guards against HTML error page when
+      `files:read` scope is missing)
+- [x] 5 MB cap enforced via `content-length` header (if present) AND a
+      post-download length check
+- [x] Path-traversal guard: reject relative paths, reject any `..`
+      segments in raw input (caught a bug — `normalize()` silently
+      collapses `..`, so the guard must check input not normalized)
+- [x] H1 fix — URL host allowlist (`files.slack.com`, `files-edge.slack.com`)
+      + https-only + `redirect: "error"` to prevent bot-token leak to
+      third-party hosts
+- [x] `tests/messenger/slack.test.ts` — 11 new tests (3 for
+      app_mention file forwarding, 8 for `downloadImage` covering happy
+      path, relative path, traversal, bad MIME, HTML response, oversized
+      declared, oversized actual, 403 error, host allowlist, non-https,
+      malformed URL). 31/31 pass.
+- [x] `npm run build && npm run lint && npm test -- tests/messenger/slack.test.ts` green
+- [x] senior-code-reviewer pass — H1 fixed; MEDIUM 2건 (streaming
+      download, atomic .tmp+rename write) deferred to Phase 1 loader
+      work. Review saved at
+      `docs/code-reviews/review-2026-04-15-m6.7-phase0.md`.
 
 ## Phase 1 — Schema + loader + paths
 
@@ -214,7 +231,7 @@ Commit: `docs(m6.7): add M6.7 milestone entry`
 
 | Phase | Status | Started | Completed |
 |-------|--------|---------|-----------|
-| 0 Slack files | ⬜ | — | — |
+| 0 Slack files | ✅ | 2026-04-15 | 2026-04-15 |
 | 1 Schema + loader | ⬜ | — | — |
 | 2 Generator | ⬜ | — | — |
 | 3 Flow persistence | ⬜ | — | — |

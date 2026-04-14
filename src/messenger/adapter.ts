@@ -98,4 +98,20 @@ export interface MessengerAdapter {
 
   /** Register the approval/rejection callback. */
   onApproval(handler: (taskId: string, approved: boolean) => void): void;
+
+  /**
+   * Download an inbound image attachment to an absolute path on disk.
+   * Only image/png, image/jpeg, image/webp accepted. 5 MB cap. Path must
+   * be absolute and contain no `..` segments — the caller is responsible
+   * for ensuring `destPath` lies under an approved directory such as
+   * `brandsDir(serviceId)`.
+   *
+   * Optional on the interface because non-Slack adapters may not
+   * support file downloads yet; callers that need it must guard with
+   * `if (adapter.downloadImage)`.
+   */
+  downloadImage?(
+    attachment: ImageAttachment,
+    destPath: string,
+  ): Promise<void>;
 }

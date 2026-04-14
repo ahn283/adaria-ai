@@ -18,6 +18,8 @@
  *      reference to it outside the Bolt client.
  */
 import { App, type LogLevel } from "@slack/bolt";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, isAbsolute, normalize } from "node:path";
 import type {
   ImageAttachment,
   IncomingMessage,
@@ -30,6 +32,39 @@ import {
   info as logInfo,
   error as logError,
 } from "../utils/logger.js";
+
+/** 5 MB cap on downloaded images (Claude vision is comfortable far below 20 MB). */
+export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+/** Only these MIME types are accepted for brand profile images. */
+export const ALLOWED_IMAGE_MIMES: readonly string[] = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+];
+
+/**
+ * Hosts we're willing to send the bot token (`Authorization: Bearer xoxb-...`)
+ * to. Anything else gets rejected before we fetch, so a malicious or
+ * malformed `url_private` can't exfiltrate the token to a third party.
+ * Slack's CDN uses these two hostnames as of 2026-04.
+ */
+const ALLOWED_IMAGE_HOSTS: readonly string[] = [
+  "files.slack.com",
+  "files-edge.slack.com",
+];
+
+/**
+ * Relevant subset of Slack's `file` object on a `message` / `app_mention`
+ * event payload. `url_private` is the authenticated download URL; the
+ * client must send `Authorization: Bearer <botToken>` (requires the
+ * `files:read` bot scope).
+ */
+interface SlackFile {
+  url_private: string;
+  mimetype: string;
+  name: string;
+}
 
 export interface SlackAdapterConfig {
   botToken: string;
@@ -104,11 +139,7 @@ export class SlackAdapter implements MessengerAdapter {
         thread_ts?: string;
         text?: string;
         ts?: string;
-        files?: Array<{
-          url_private: string;
-          mimetype: string;
-          name: string;
-        }>;
+        files?: SlackFile[];
       };
       if (!msg.user) return Promise.resolve();
       if (!msg.text && !msg.files?.length) return Promise.resolve();
@@ -154,7 +185,18 @@ export class SlackAdapter implements MessengerAdapter {
 
       // Strip the `<@BOT_ID>` prefix from the mention text.
       const text = (event.text ?? "").replace(/<@[A-Z0-9]+>/g, "").trim();
-      if (!text || !event.user) return Promise.resolve();
+      if (!event.user) return Promise.resolve();
+
+      // M6.7 — channel file uploads arrive with a mention as the caption.
+      // Previously app_mention ignored `event.files`, so brand-profile
+      // uploads only worked in DMs. Forward any images the same way the
+      // DM `message` handler does.
+      const files = (event as { files?: Array<SlackFile> }).files;
+      const images = this.extractImages(files);
+
+      // A bare @mention with no text and no attachments is a no-op —
+      // matches the DM handler's zero-byte guard.
+      if (!text && images.length === 0) return Promise.resolve();
 
       const eventTs = event.ts;
       const incoming: IncomingMessage = {
@@ -167,6 +209,7 @@ export class SlackAdapter implements MessengerAdapter {
       };
       const threadId = event.thread_ts ?? eventTs;
       if (threadId) incoming.threadId = threadId;
+      if (images.length > 0) incoming.images = images;
 
       return Promise.resolve(handler(incoming));
     });
@@ -190,9 +233,7 @@ export class SlackAdapter implements MessengerAdapter {
     });
   }
 
-  private extractImages(
-    files: Array<{ url_private: string; mimetype: string; name: string }> | undefined,
-  ): ImageAttachment[] {
+  private extractImages(files: SlackFile[] | undefined): ImageAttachment[] {
     if (!files) return [];
     const images: ImageAttachment[] = [];
     for (const file of files) {
@@ -206,6 +247,97 @@ export class SlackAdapter implements MessengerAdapter {
       }
     }
     return images;
+  }
+
+  /**
+   * Download a Slack-hosted image to an absolute path. Validates MIME +
+   * size + destination path before touching disk. Callers (e.g. BrandSkill)
+   * compute `destPath` via `brandsDir(serviceId)` so the path guarantee
+   * here is the generic "absolute, no `..`, MIME in whitelist, size cap".
+   */
+  async downloadImage(
+    attachment: ImageAttachment,
+    destPath: string,
+  ): Promise<void> {
+    if (!isAbsolute(destPath)) {
+      throw new Error(`downloadImage: destPath must be absolute, got ${destPath}`);
+    }
+    // Guard must examine the *input* path. `normalize()` collapses `..`
+    // segments silently, so checking the normalized output would miss an
+    // attacker's `.../foo/../../etc/passwd`. Reject any `..` segment in
+    // the raw input before we resolve it.
+    if (destPath.split(/[\\/]/).includes("..")) {
+      throw new Error(`downloadImage: destPath traversal rejected: ${destPath}`);
+    }
+    const normalized = normalize(destPath);
+    if (!ALLOWED_IMAGE_MIMES.includes(attachment.mimeType)) {
+      throw new Error(
+        `downloadImage: MIME ${attachment.mimeType} not allowed (png/jpeg/webp only)`,
+      );
+    }
+
+    // Host allowlist — the `authHeader` carries the bot token, so we must
+    // refuse to send it anywhere other than Slack's file CDN. Also force
+    // https and block redirects so a crafted URL can't bounce us onto a
+    // hostile origin mid-request.
+    let parsed: URL;
+    try {
+      parsed = new URL(attachment.url);
+    } catch {
+      throw new Error(`downloadImage: invalid URL: ${attachment.url}`);
+    }
+    if (parsed.protocol !== "https:") {
+      throw new Error(`downloadImage: non-https URL rejected: ${attachment.url}`);
+    }
+    if (!ALLOWED_IMAGE_HOSTS.includes(parsed.hostname)) {
+      throw new Error(
+        `downloadImage: host ${parsed.hostname} not in allowlist (files.slack.com only)`,
+      );
+    }
+
+    const headers: Record<string, string> = {};
+    if (attachment.authHeader) headers["Authorization"] = attachment.authHeader;
+
+    const res = await fetch(attachment.url, { headers, redirect: "error" });
+    if (!res.ok) {
+      throw new Error(
+        `downloadImage: fetch failed with ${String(res.status)} ${res.statusText}`,
+      );
+    }
+
+    // Cross-check Content-Type: Slack can redirect to an HTML error page
+    // with status 200 when the bot token lacks `files:read`, in which
+    // case Content-Type would be text/html and we must fail closed.
+    const contentType = (res.headers.get("content-type") ?? "").toLowerCase();
+    const contentTypeFirstToken = contentType.split(";")[0]?.trim() ?? "";
+    if (
+      contentTypeFirstToken !== "" &&
+      !ALLOWED_IMAGE_MIMES.includes(contentTypeFirstToken)
+    ) {
+      throw new Error(
+        `downloadImage: server returned content-type ${contentTypeFirstToken}, expected image/*`,
+      );
+    }
+
+    const contentLengthHeader = res.headers.get("content-length");
+    if (contentLengthHeader) {
+      const declared = Number(contentLengthHeader);
+      if (Number.isFinite(declared) && declared > MAX_IMAGE_BYTES) {
+        throw new Error(
+          `downloadImage: size ${String(declared)} exceeds ${String(MAX_IMAGE_BYTES)} byte cap`,
+        );
+      }
+    }
+
+    const buffer = Buffer.from(await res.arrayBuffer());
+    if (buffer.byteLength > MAX_IMAGE_BYTES) {
+      throw new Error(
+        `downloadImage: downloaded ${String(buffer.byteLength)} bytes exceeds cap (server omitted content-length)`,
+      );
+    }
+
+    await mkdir(dirname(normalized), { recursive: true });
+    await writeFile(normalized, buffer);
   }
 
   async start(): Promise<void> {
