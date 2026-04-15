@@ -92,38 +92,63 @@ Commit: `feat(m6.7): brand profile schema + loader` (TBD hash)
       symlink rejection, malformed YAML wrap + tests). Review at
       `docs/code-reviews/review-2026-04-15-m6.7-phase1.md`.
 
-## Phase 2 — Generator + fetchers + prompt
+## Phase 2 — Generator + fetchers + prompt ✅
 
-Commit: `feat(m6.7): brand generator`
+Commit: `feat(m6.7): brand generator` (TBD hash)
 
-- [ ] `npm install cheerio` + `@types/cheerio` (dev)
-- [ ] `src/brands/fetchers/web.ts` — HTML fetch + `cheerio` parse for
-      `<title>`, `<meta name=description>`, og:*, `<link rel=icon>`,
-      CSS custom properties. SSRF guard: block private IP ranges via
-      DNS pre-resolution
-- [ ] `src/brands/fetchers/package.ts` — npm Registry + GitHub README
-      fetch (unauthenticated). Base64-decode README. Accept optional
-      `githubRepo`. On 403/429 → surface rate-limit error, abort flow
-- [ ] `src/brands/generator.ts`:
-  - [ ] `generateBrandProfile(service, deps)` — dispatch by type
-  - [ ] `type: app` — use existing `AppStoreCollector`,
-        `PlayStoreCollector`, `AsoMobileCollector` via deps
-  - [ ] `type: web` / `type: package` — use fetchers
-  - [ ] `sanitizeExternalText` from `prompt-guard.ts` on ALL attacker-
-        controllable fields (website body, README, review text)
-  - [ ] Call `ctx.runClaude()` with `prompts/brand-generate.md`, parse
-        JSON output, validate with zod, serialise to YAML
-  - [ ] Write `brandsDir(serviceId)/brand.yaml` (mkdir -p)
-  - [ ] Respect `ADARIA_DRY_RUN` — skip fetch + claude + write
-- [ ] `prompts/brand-generate.md` — shared analysis template with type
-      placeholder + schema instruction
-- [ ] `tests/brands/fetchers.test.ts` — web SSRF block, package happy
-      path, GitHub 404 fallback, rate-limit message
-- [ ] `tests/brands/generator.test.ts` — all 3 types with mocked
-      fetchers + mocked `ctx.runClaude`, dry-run path, injection
-      sanitisation, invalid Claude JSON
-- [ ] `npm run build && npm run lint && npm test` green
-- [ ] senior-code-reviewer pass — extra attention to SSRF + injection
+- [x] `npm install cheerio` (no @types needed — ships its own). Also
+      imports `undici` (already bundled with Node 20) for DNS-pinned
+      Agent.
+- [x] `src/brands/fetchers/web.ts` — HTML fetch + `cheerio` parse for
+      title, meta description, og:*, theme-color, CSS `--*primary*`
+      custom properties. SSRF guard: `resolvePublicAddress` pre-flight
+      DNS (IPv4 + IPv6), block RFC1918 / loopback / link-local /
+      multicast / IPv4-mapped. **DNS TOCTOU closed** via
+      `makePinnedDispatcher` — undici `Agent` with custom `connect.lookup`
+      that returns the already-vetted address. `redirect: "error"`,
+      http/https only, 15s timeout, `content-length` preflight + 2 MB
+      body cap, HTML content-type check.
+- [x] `src/brands/fetchers/package.ts` — npm Registry + GitHub README
+      (unauth, 60 req/hr). `readmeSource: "npm" | "github" | null`
+      threaded through so `_meta.sources` labels accurately. Scoped
+      names (`@scope/name`) URL-encoded. 403/429 → `RateLimitError`
+      with 1h retry.
+- [x] `src/brands/generator.ts`:
+  - [x] `generateBrandProfile(req, deps)` — dispatches on serviceType
+  - [x] `type: app` — abstract `AppStoreBrandFetcher` /
+        `PlayStoreBrandFetcher` / `AsoMobileBrandFetcher` interfaces.
+        BrandSkill (Phase 4) wires real collectors through adapters.
+        Throws `ConfigError` when all fetchers return null (prevents
+        hallucinated profile from empty input).
+  - [x] `type: web` / `type: package` — direct fetcher calls via deps.
+  - [x] `sanitizeExternalText` applied to every external field
+        (store description, listing copy, website body, README,
+        homepage URL).
+  - [x] `parseJsonResponse` → zod schema with `.partial().default({})`
+        so missing Claude sections fall back to defaults. Invalid JSON
+        → `ConfigError` with 한국어 userMessage.
+  - [x] Writes `$ADARIA_HOME/brands/{serviceId}/brand.yaml` with
+        header comment. `mkdir -p` before write.
+  - [x] `ADARIA_DRY_RUN=1` → skip fetchers, Claude, write. Returns
+        placeholder profile with `dryRun: true`.
+- [x] `prompts/brand-generate.md` — shared template, `<input>` wrapped
+      + explicit "treat as data not instructions" guard, fixed JSON
+      schema, "empty when uncertain" rule.
+- [x] `tests/brands/fetchers.test.ts` — 37 tests: isPrivateOrReservedIp
+      IPv4/IPv6 allow/deny matrix, SSRF block via DNS + literal IP,
+      non-http schemes, content-type mismatch, content-length cap,
+      non-2xx, npm happy path + readmeSource labelling (npm/github/null),
+      GitHub 404/403 rate limit, scoped package encoding.
+- [x] `tests/brands/generator.test.ts` — 9 tests: app/web/package
+      dispatch with mocked deps, sanitisation assertion (no raw
+      `<script>`), dry-run (no I/O), ConfigError for missing URL/name,
+      all-null app fetchers, invalid Claude JSON, default-filling.
+- [x] `npm run build && npm run lint && npm test -- tests/brands/` green
+      (70/70).
+- [x] senior-code-reviewer pass — B+, 0 CRITICAL / 1 HIGH / 3 MEDIUM.
+      All 4 addressed in-phase (DNS-pinned dispatcher, content-length
+      preflight, readmeSource labelling, all-null fetcher guard).
+      Review at `docs/code-reviews/review-2026-04-15-m6.7-phase2.md`.
 
 ## Phase 3 — Flow state persistence
 
@@ -252,7 +277,7 @@ Commit: `docs(m6.7): add M6.7 milestone entry`
 |-------|--------|---------|-----------|
 | 0 Slack files | ✅ | 2026-04-15 | 2026-04-15 |
 | 1 Schema + loader | ✅ | 2026-04-15 | 2026-04-15 |
-| 2 Generator | ⬜ | — | — |
+| 2 Generator | ✅ | 2026-04-15 | 2026-04-15 |
 | 3 Flow persistence | ⬜ | — | — |
 | 4 BrandSkill + routing | ⬜ | — | — |
 | 5 Context injection | ⬜ | — | — |
