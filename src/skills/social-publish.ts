@@ -14,6 +14,7 @@ import { createSocialClient, type SocialConfigs } from "../social/factory.js";
 import { insertSocialPost } from "../db/queries.js";
 import { parseAppNameFromCommand } from "./index.js";
 import { preparePrompt } from "../prompts/loader.js";
+import { resolveBrandContextForApp } from "../brands/context.js";
 import { parseJsonResponse } from "../utils/parse-json.js";
 import * as logger from "../utils/logger.js";
 
@@ -165,10 +166,12 @@ export class SocialPublishSkill implements Skill {
     platforms: SocialPlatform[],
   ): Promise<PlatformContent[]> {
     try {
+      const brandContext = await resolveBrandContextForApp(app.id);
       const prompt = preparePrompt("social-publish", {
         appName: app.name,
         platforms: platforms.join(", "),
         keywords: app.primaryKeywords.join(", ") || "N/A",
+        brandContext,
       });
 
       const response = await ctx.runClaude(prompt);

@@ -18,3 +18,6 @@ Respond in English JSON only:
     { "name": "...", "description": "...", "duration": "...", "purpose": "...", "keywords": ["..."] }
   ]
 }
+
+## Brand context
+{{brandContext}}

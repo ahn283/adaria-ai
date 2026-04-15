@@ -36,3 +36,6 @@ Respond with JSON only:
     { "event_name": "...", "params": "...", "purpose": "..." }
   ]
 }
+
+## Brand context
+{{brandContext}}

@@ -67,3 +67,6 @@ Respond with JSON containing exactly 2 posts:
     }
   ]
 }
+
+## Brand context
+{{brandContext}}

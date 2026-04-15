@@ -42,3 +42,6 @@ Respond with JSON:
   ],
   "summary": "Short English summary of what changed (2-3 sentences)"
 }
+
+## Brand context
+{{brandContext}}

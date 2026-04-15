@@ -27,6 +27,7 @@ import {
   getPreviousCompetitorMetadata,
 } from "../db/queries.js";
 import { preparePrompt } from "../prompts/loader.js";
+import { resolveBrandContextForApp } from "../brands/context.js";
 import { warn as logWarn } from "../utils/logger.js";
 import { sanitizeExternalText } from "../security/prompt-guard.js";
 
@@ -123,6 +124,7 @@ export class AsoSkill implements Skill {
   async analyzeAso(ctx: SkillContext, app: AppConfig): Promise<SkillResult> {
     const alerts: SkillAlert[] = [];
     const approvals: ApprovalItem[] = [];
+    const brandContext = await resolveBrandContextForApp(app.id);
 
     // 1. Collect current keyword rankings
     const rankings = await this.collectKeywordRankings(ctx, app);
@@ -151,7 +153,7 @@ export class AsoSkill implements Skill {
     let metadataProposal: string | null = null;
     if (alerts.length > 0 || opportunities.length > 0 || competitorChanges.length > 0) {
       metadataProposal = await this.generateMetadataProposal(
-        ctx, app, rankChanges, opportunities,
+        ctx, app, rankChanges, opportunities, brandContext,
       );
       if (metadataProposal) {
         approvals.push({
@@ -165,12 +167,12 @@ export class AsoSkill implements Skill {
 
     // 7. Screenshot caption suggestions
     const screenshotSuggestions = await this.generateScreenshotSuggestions(
-      ctx, app, opportunities,
+      ctx, app, opportunities, brandContext,
     );
 
     // 8. In-App Events suggestions (iOS only)
     const inAppEventSuggestions = await this.generateInAppEventSuggestions(
-      ctx, app,
+      ctx, app, brandContext,
     );
 
     // 9. Build summary
@@ -371,6 +373,7 @@ export class AsoSkill implements Skill {
     app: AppConfig,
     rankChanges: RankChange[],
     opportunities: Opportunity[],
+    brandContext = "",
   ): Promise<string | null> {
     const currentMetadata = await this.getCurrentMetadata(app);
 
@@ -402,6 +405,7 @@ export class AsoSkill implements Skill {
       rankChanges: rankChangesText,
       opportunities: opportunitiesText,
       currentMetadata: metadataText,
+      brandContext,
     });
 
     try {
@@ -418,6 +422,7 @@ export class AsoSkill implements Skill {
     ctx: SkillContext,
     app: AppConfig,
     opportunities: Opportunity[],
+    brandContext = "",
   ): Promise<string | null> {
     const keywords = [
       ...app.primaryKeywords,
@@ -429,6 +434,7 @@ export class AsoSkill implements Skill {
     const prompt = preparePrompt("aso-screenshots", {
       appName: app.name,
       keywords: keywords.join(", "),
+      brandContext,
     });
 
     try {
@@ -444,12 +450,14 @@ export class AsoSkill implements Skill {
   private async generateInAppEventSuggestions(
     ctx: SkillContext,
     app: AppConfig,
+    brandContext = "",
   ): Promise<string | null> {
     if (!app.platform.includes("ios")) return null;
 
     const prompt = preparePrompt("aso-inapp-events", {
       appName: app.name,
       keywords: app.primaryKeywords.join(", "),
+      brandContext,
     });
 
     try {

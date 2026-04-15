@@ -30,5 +30,10 @@ export function preparePrompt(
     template = template.replaceAll(`{{${key}}}`, value);
   }
 
+  // Resolve any remaining `{{brandContext}}` placeholders to empty
+  // string so prompts stay null-safe when a caller doesn't load a
+  // brand profile (PRD §1.3 graceful degradation).
+  template = template.replaceAll("{{brandContext}}", "");
+
   return template;
 }

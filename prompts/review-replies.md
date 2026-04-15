@@ -16,3 +16,6 @@ You are a customer-support writer for the {{appName}} team. Draft replies to app
 
 Respond with a JSON array only:
 [{ "index": 1, "reply": "..." }, ...]
+
+## Brand context
+{{brandContext}}

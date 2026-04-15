@@ -114,3 +114,6 @@ Respond with JSON containing 3-5 posts:
     }
   ]
 }
+
+## Brand context
+{{brandContext}}

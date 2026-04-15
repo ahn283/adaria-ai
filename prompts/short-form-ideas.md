@@ -48,3 +48,6 @@ Respond with JSON containing exactly 3 ideas:
     "recommendation": "Strategy for the week ahead"
   }
 }
+
+## Brand context
+{{brandContext}}

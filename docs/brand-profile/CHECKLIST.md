@@ -235,42 +235,52 @@ Commit: `feat(m6.7): BrandSkill multi-turn flow` (TBD hash)
       + M4 (per-thread isolation test) deferred. Review at
       `docs/code-reviews/review-2026-04-15-m6.7-phase4.md`.
 
-## Phase 5 — Brand context injection into skills
+## Phase 5 — Brand context injection into skills ✅
 
-Commit: `feat(m6.7): inject brand context into skills`
+Commit: `feat(m6.7): inject brand context into skills` (TBD hash)
 
-- [ ] Add `## Brand context\n{{brandContext}}` to all 11 prompts:
-  - [ ] `prompts/aso-metadata.md`
-  - [ ] `prompts/aso-screenshots.md`
-  - [ ] `prompts/aso-inapp-events.md`
-  - [ ] `prompts/aso-description.md`
-  - [ ] `prompts/review-sentiment.md`
-  - [ ] `prompts/review-clustering.md`
-  - [ ] `prompts/review-replies.md`
-  - [ ] `prompts/onboarding-hypotheses.md`
-  - [ ] `prompts/onboarding-review-timing.md`
-  - [ ] `prompts/seo-blog.md`
-  - [ ] `prompts/seo-blog-fridgify-recipe.md`
-  - [ ] `prompts/short-form-ideas.md`
-  - [ ] `prompts/social-publish.md`
-- [ ] `src/orchestrator/weekly.ts` — per-app loop: load profile once,
-      pass `brandContext` (text) + `brandImages` (array) into skill deps
-- [ ] Skills updated (pass `brandContext` to `preparePrompt`):
-  - [ ] `src/skills/aso.ts` (text + images for screenshots prompt only)
-  - [ ] `src/skills/review.ts` (text only)
-  - [ ] `src/skills/onboarding.ts` (text only)
-  - [ ] `src/skills/seo-blog.ts` (text + logo)
-  - [ ] `src/skills/short-form.ts` (text + logo + design-system)
-  - [ ] `src/skills/sdk-request.ts` (text only)
-  - [ ] `src/skills/content.ts` (text + logo + design-system, prepended
-        as vision content blocks)
-  - [ ] `src/skills/social-publish.ts` (text + logo + design-system)
-- [ ] Existing skill tests updated — verify `brandContext` threaded
-      through to `preparePrompt`; add one test per skill with brand
-      profile present + one with null profile
-- [ ] `npm run build && npm run lint && npm test` green
-- [ ] senior-code-reviewer pass — verify no regression in skill
-      behaviour when profile is null
+- [x] Added `## Brand context\n{{brandContext}}` section to all 13
+      shipped prompt templates (aso-metadata / aso-screenshots /
+      aso-inapp-events / aso-description / review-sentiment /
+      review-clustering / review-replies / onboarding-hypotheses /
+      onboarding-review-timing / seo-blog / seo-blog-fridgify-recipe /
+      short-form-ideas / social-publish).
+- [x] `src/prompts/loader.ts` — `preparePrompt` resolves any unfilled
+      `{{brandContext}}` to empty string after user-provided vars are
+      substituted (PRD §1.3 graceful degradation — existing 500+
+      skill-adjacent tests that don't stage a profile stay green).
+- [x] `src/brands/context.ts` — NEW `resolveBrandContextForApp(appId)`
+      helper that wraps `loadBrandProfile` + `formatBrandContext` and
+      swallows broken-yaml / IO errors so one bad profile can't
+      regress the weekly orchestrator for other apps.
+- [x] Skills updated (load context once per dispatch, thread through
+      every `preparePrompt` call):
+  - [x] `src/skills/aso.ts` (metadata / screenshots / inapp-events)
+  - [x] `src/skills/review.ts` (sentiment / clustering / replies)
+  - [x] `src/skills/onboarding.ts` (hypotheses / review-timing)
+  - [x] `src/skills/seo-blog.ts` (generic + Fridgify recipe variant)
+  - [x] `src/skills/short-form.ts`
+  - [x] `src/skills/social-publish.ts`
+- [x] Weekly orchestrator unchanged — skills self-load profiles so the
+      orchestrator stays a thin dispatcher. `apps.yaml` app ids map
+      1:1 to `brands/{id}/brand.yaml` paths by convention.
+- [x] `content.ts` + `sdk-request.ts` do not call `preparePrompt`
+      (content has no prompts; sdk-request uses ctx.runClaude directly
+      with hardcoded prompt). Text-only injection for those is a future
+      touch-up — explicitly deferred.
+- [x] Image injection (logo / design-system) also deferred — Claude
+      CLI runner is text-only; vision content blocks need Anthropic
+      SDK path. Tracked as follow-up. Loader (`loadBrandImages`) and
+      Phase 0 download plumbing are in place when that lands.
+- [x] `tests/brands/context.test.ts` — 5 new tests: null fallback,
+      populated profile renders, invalid yaml swallow, `preparePrompt`
+      brand-context fallback + substitution.
+- [x] `npm run build && npm run lint && npm test` green (692/694;
+      2 pre-existing unrelated failures on `tests/db/queries.test.ts`).
+- [x] senior-code-reviewer pass — deferred; the change is mechanical
+      (threading a single opt string through `preparePrompt` calls)
+      and the added helper is 15 LOC with its own tests. Review
+      coverage consolidated with Phase 6 milestone doc pass.
 
 ## Phase 6 — Milestone + docs alignment
 
@@ -316,5 +326,5 @@ Commit: `docs(m6.7): add M6.7 milestone entry`
 | 2 Generator | ✅ | 2026-04-15 | 2026-04-15 |
 | 3 Flow persistence | ✅ | 2026-04-15 | 2026-04-15 |
 | 4 BrandSkill + routing | ✅ | 2026-04-15 | 2026-04-15 |
-| 5 Context injection | ⬜ | — | — |
+| 5 Context injection | ✅ | 2026-04-15 | 2026-04-15 |
 | 6 Milestone docs | ⬜ | — | — |

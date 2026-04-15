@@ -14,3 +14,6 @@ Classify the sentiment of mobile app reviews.
 
 Respond with a JSON array only:
 [{ "index": 1, "sentiment": "positive|negative|neutral" }, ...]
+
+## Brand context
+{{brandContext}}

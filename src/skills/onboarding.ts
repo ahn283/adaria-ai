@@ -15,6 +15,7 @@ import type {
 import type { AppConfig } from "../config/apps-schema.js";
 import { upsertSdkEvent } from "../db/queries.js";
 import { preparePrompt } from "../prompts/loader.js";
+import { resolveBrandContextForApp } from "../brands/context.js";
 import { warn as logWarn } from "../utils/logger.js";
 
 const DEFAULT_DROPOFF_THRESHOLD = 0.5;
@@ -82,6 +83,7 @@ export class OnboardingSkill implements Skill {
     endDate: string,
   ): Promise<SkillResult> {
     const alerts: SkillAlert[] = [];
+    const brandContext = await resolveBrandContextForApp(app.id);
 
     // 1. Collect summary → persist to DB
     await this.collectSummary(ctx, app, startDate, endDate);
@@ -107,13 +109,13 @@ export class OnboardingSkill implements Skill {
     let hypotheses: Array<{ cause: string; suggestion: string }> = [];
     let sdkRequests: Array<{ event_name: string; purpose?: string; priority?: string; source?: string }> = [];
     if (funnelData.funnel.length > 0) {
-      const analysis = await this.generateHypotheses(ctx, app, funnelData, conversionRates, cohortRetention);
+      const analysis = await this.generateHypotheses(ctx, app, funnelData, conversionRates, cohortRetention, brandContext);
       hypotheses = analysis.hypotheses;
       sdkRequests = analysis.sdkRequests;
     }
 
     // 6. Review request timing
-    const reviewTiming = await this.suggestReviewRequestTiming(ctx, app, conversionRates, cohortRetention);
+    const reviewTiming = await this.suggestReviewRequestTiming(ctx, app, conversionRates, cohortRetention, brandContext);
 
     // 7. SDK request approvals for the orchestrator pipeline
     const approvals: Array<{ id: string; description: string; agent: string; payload?: unknown }> = [];
@@ -275,6 +277,7 @@ export class OnboardingSkill implements Skill {
     funnelData: { funnel: FunnelStep[]; overall_conversion: number },
     conversionRates: { installToSignup: number | null; signupToSubscription: number | null },
     cohortRetention: Array<{ period: number; cohortSize: number; retained: number; rate: number }> | null,
+    brandContext = "",
   ): Promise<{ hypotheses: Array<{ cause: string; suggestion: string }>; sdkRequests: Array<{ event_name: string; purpose?: string; priority?: string; source?: string }> }> {
     const prompt = preparePrompt("onboarding-hypotheses", {
       appName: app.name,
@@ -283,6 +286,7 @@ export class OnboardingSkill implements Skill {
       installToSignup: this.formatRate(conversionRates.installToSignup),
       signupToSubscription: this.formatRate(conversionRates.signupToSubscription),
       cohortRetention: this.formatCohortRetention(cohortRetention),
+      brandContext,
     });
 
     try {
@@ -305,12 +309,14 @@ export class OnboardingSkill implements Skill {
     app: AppConfig,
     conversionRates: { installToSignup: number | null; signupToSubscription: number | null },
     cohortRetention: Array<{ period: number; cohortSize: number; retained: number; rate: number }> | null,
+    brandContext = "",
   ): Promise<{ optimalTrigger?: string } | null> {
     const prompt = preparePrompt("onboarding-review-timing", {
       appName: app.name,
       installToSignup: this.formatRate(conversionRates.installToSignup),
       signupToSubscription: this.formatRate(conversionRates.signupToSubscription),
       cohortRetention: this.formatCohortRetention(cohortRetention),
+      brandContext,
     });
 
     try {

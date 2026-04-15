@@ -17,3 +17,6 @@ Top-3 complaints and top-3 feature requests. Respond with JSON only:
   "complaints": [{ "topic": "...", "count": 0, "suggestion": "..." }],
   "featureRequests": [{ "feature": "...", "count": 0 }]
 }
+
+## Brand context
+{{brandContext}}

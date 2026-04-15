@@ -22,3 +22,6 @@ Respond with JSON only:
   "excludeConditions": ["..."],
   "reasoning": "..."
 }
+
+## Brand context
+{{brandContext}}

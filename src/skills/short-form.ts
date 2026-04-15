@@ -15,6 +15,7 @@ import {
   getRecentShortFormPerformance,
 } from "../db/queries.js";
 import { preparePrompt } from "../prompts/loader.js";
+import { resolveBrandContextForApp } from "../brands/context.js";
 import { warn as logWarn } from "../utils/logger.js";
 
 export interface ShortFormSkillDeps {
@@ -51,6 +52,7 @@ export class ShortFormSkill implements Skill {
   }
 
   async analyzeShortForm(ctx: SkillContext, app: AppConfig): Promise<SkillResult> {
+    const brandContext = await resolveBrandContextForApp(app.id);
     // 1. Collect YouTube Shorts performance
     let performanceData: YouTubeVideoStats[] = [];
     if (app.youtubeChannelId && this.deps.youtube) {
@@ -72,6 +74,7 @@ export class ShortFormSkill implements Skill {
       asoInsights: "Nothing notable",
       reviewInsights: "Nothing notable",
       webTrafficImpact: "No data",
+      brandContext,
     });
 
     let ideas: unknown[] = [];

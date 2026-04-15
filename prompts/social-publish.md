@@ -44,3 +44,6 @@ Return a JSON array — one object per platform. Do NOT include platforms that a
 4. Hashtags go in the `hashtags` array, NOT inline in the text.
 5. Do NOT include image URLs or links — those are added separately.
 6. Write in the same language as the app's primary market. If keywords are in Korean, write in Korean.
+
+## Brand context
+{{brandContext}}

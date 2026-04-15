@@ -32,3 +32,6 @@ Respond with JSON only (no markdown code fences):
   "keywords": "...",
   "reasoning": "..."
 }
+
+## Brand context
+{{brandContext}}

@@ -19,6 +19,7 @@ import type { BlogCategory, BlogPostDraft, FridgifyCascadeResult, FridgifyRecipe
 import type { CascadeOptions } from "../collectors/fridgify-recipes.js";
 import { insertBlogPost } from "../db/queries.js";
 import { preparePrompt } from "../prompts/loader.js";
+import { resolveBrandContextForApp } from "../brands/context.js";
 import { warn as logWarn, info as logInfo } from "../utils/logger.js";
 
 const MAX_FIELD_LEN = 500;
@@ -69,6 +70,7 @@ export class SeoBlogSkill implements Skill, ExecutableSkill {
 
   async analyzeSeo(ctx: SkillContext, app: AppConfig): Promise<SkillResult> {
     const approvals: ApprovalItem[] = [];
+    const brandContext = await resolveBrandContextForApp(app.id);
 
     // 1. Get existing slugs
     let existingSlugs: string[] = [];
@@ -114,6 +116,7 @@ export class SeoBlogSkill implements Skill, ExecutableSkill {
       blogPerformance: "No data (first week)",
       trafficSources: "No data",
       existingSlugs: existingSlugs.length > 0 ? existingSlugs.join(", ") : "none",
+      brandContext,
     };
     if (useRecipePrompt) {
       baseVars["period"] = recipesPeriod ?? "";

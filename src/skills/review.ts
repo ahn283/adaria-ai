@@ -23,6 +23,7 @@ import {
   getSentimentSummary,
 } from "../db/queries.js";
 import { preparePrompt } from "../prompts/loader.js";
+import { resolveBrandContextForApp } from "../brands/context.js";
 import { warn as logWarn } from "../utils/logger.js";
 import { sanitizeExternalText } from "../security/prompt-guard.js";
 
@@ -79,13 +80,14 @@ export class ReviewSkill implements Skill {
   async analyzeReviews(ctx: SkillContext, app: AppConfig): Promise<SkillResult> {
     const alerts: SkillAlert[] = [];
     const approvals: ApprovalItem[] = [];
+    const brandContext = await resolveBrandContextForApp(app.id);
 
     // 1. Collect new reviews
     const newReviews = await this.collectReviews(ctx, app);
 
     // 2. Analyze sentiment via Claude
     if (newReviews.length > 0) {
-      await this.analyzeSentiment(ctx, newReviews);
+      await this.analyzeSentiment(ctx, newReviews, brandContext);
     }
 
     // 3. Get sentiment summary
@@ -102,7 +104,7 @@ export class ReviewSkill implements Skill {
     // 5. Cluster complaints and feature requests
     let topComplaints: Array<{ topic: string }> = [];
     if (newReviews.length > 0) {
-      const clusters = await this.clusterReviews(ctx, app, newReviews);
+      const clusters = await this.clusterReviews(ctx, app, newReviews, brandContext);
       topComplaints = clusters.complaints ?? [];
     }
 
@@ -112,7 +114,7 @@ export class ReviewSkill implements Skill {
     );
     const replyDrafts: Array<{ reviewId: string; reply: string }> = [];
     if (unreplied.length > 0) {
-      const drafts = await this.generateReplyDrafts(ctx, app, unreplied);
+      const drafts = await this.generateReplyDrafts(ctx, app, unreplied, brandContext);
       replyDrafts.push(...drafts);
 
       for (const draft of drafts) {
@@ -182,12 +184,13 @@ export class ReviewSkill implements Skill {
   private async analyzeSentiment(
     ctx: SkillContext,
     reviews: Array<StoreReview & { platform: string }>,
+    brandContext = "",
   ): Promise<void> {
     const reviewsBlock = reviews
       .map((r, i) => `<review index="${String(i + 1)}" rating="${String(r.rating)}">${escapeXml(sanitizeReviewBody(r.body ?? "(no content)"))}</review>`)
       .join("\n");
 
-    const prompt = preparePrompt("review-sentiment", { reviewsBlock });
+    const prompt = preparePrompt("review-sentiment", { reviewsBlock, brandContext });
 
     try {
       const raw = await ctx.runClaude(prompt);
@@ -231,6 +234,7 @@ export class ReviewSkill implements Skill {
     ctx: SkillContext,
     app: AppConfig,
     reviews: Array<StoreReview & { platform: string }>,
+    brandContext = "",
   ): Promise<{ complaints: Array<{ topic: string }>; featureRequests: Array<{ feature: string }> }> {
     const negativeReviews = reviews.filter((r) => r.rating <= 3);
     if (negativeReviews.length === 0) return { complaints: [], featureRequests: [] };
@@ -243,6 +247,7 @@ export class ReviewSkill implements Skill {
       appName: app.name,
       reviewCount: String(negativeReviews.length),
       reviewsBlock,
+      brandContext,
     });
 
     try {
@@ -257,6 +262,7 @@ export class ReviewSkill implements Skill {
     ctx: SkillContext,
     app: AppConfig,
     reviews: Array<{ review_id: string; rating: number; sentiment: string | null; body: string | null }>,
+    brandContext = "",
   ): Promise<Array<{ reviewId: string; reply: string }>> {
     const reviewsBlock = reviews
       .map((r, i) => `<review index="${String(i + 1)}" rating="${String(r.rating)}" sentiment="${r.sentiment ?? "unknown"}">${escapeXml(sanitizeReviewBody(r.body ?? ""))}</review>`)
@@ -265,6 +271,7 @@ export class ReviewSkill implements Skill {
     const prompt = preparePrompt("review-replies", {
       appName: app.name,
       reviewsBlock,
+      brandContext,
     });
 
     try {

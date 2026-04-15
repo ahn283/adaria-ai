@@ -18,3 +18,6 @@ Respond in English JSON only:
   ],
   "principles": ["..."]
 }
+
+## Brand context
+{{brandContext}}
