@@ -374,8 +374,11 @@ Full tick list in `docs/brand-profile/CHECKLIST.md`. Summary below.
 - [x] Phase 5 — `preparePrompt` brand-context fallback, 13 prompt
       templates gain `{{brandContext}}`, 6 skills load profiles per
       dispatch (commit `4cebb53`)
-- [ ] Phase 6 — milestone + porting-matrix + CLAUDE.md alignment
-      (this commit)
+- [x] Phase 6 — milestone + porting-matrix + CLAUDE.md alignment
+      (commit `cc26e63`)
+- [x] Follow-ups — date-stable agent_metrics tests, content.ts
+      brand context injection, per-thread flow isolation test,
+      `design/` gitignored (commit `00fb722`)
 
 **Exit criteria verification:** see `docs/brand-profile/CHECKLIST.md`
 (manual Slack E2E pending — covered by M7 parallel run).
@@ -401,6 +404,22 @@ Full tick list in `docs/brand-profile/CHECKLIST.md`. Summary below.
   - [ ] Blog publish approval (dry-run — log what would be published)
   - [ ] Review reply approval (dry-run)
   - [ ] Metadata change approval (dry-run)
+- [ ] **M6.7 brand flow E2E (new):**
+  - [ ] `@adaria-ai brand` in DM → complete flow for service type `app`
+        (e.g. Fridgify via App Store URL + Play package)
+  - [ ] `@adaria-ai brand` → complete flow for `web` (e.g. `https://eodin.app`)
+  - [ ] `@adaria-ai brand` → complete flow for `package`
+        (e.g. `@eodin/analytics-sdk`)
+  - [ ] Upload logo + design-system images in-flow; verify
+        `~/.adaria/brands/{id}/{logo,design-system}.*` written
+  - [ ] `@adaria-ai aso fridgify` with `brand.yaml` present → output
+        reflects brand voice (spot-check); remove yaml → skill still
+        succeeds with empty brand section
+  - [ ] Kill `adaria-ai daemon` mid-flow (state = ASK_IDENTIFIER),
+        `launchctl kickstart -k gui/$UID/com.adaria-ai.daemon`, send
+        next message → flow resumes at persisted state
+  - [ ] `ADARIA_DRY_RUN=1 @adaria-ai brand` path logs would-be writes
+        but creates no `brand.yaml` or image files
 
 ### Daemon wiring (deferred from M6/M6.5)
 
@@ -437,6 +456,12 @@ Full tick list in `docs/brand-profile/CHECKLIST.md`. Summary below.
 - [ ] **Do not** run `claude /login` this week (shared auth state)
 - [ ] **Do not** commit to growth-agent unless it's a Slack-down fix
 - [ ] Monitor both daemons daily via `adaria-ai status` / `growth-agent status`
+- [ ] Before starting: Slack app dashboard → Bot Token Scopes → add
+      `files:read` and reinstall (one-time prerequisite for the M6.7
+      brand file uploads; no-op for other skills)
+- [ ] If brand flow gets stuck mid-E2E, escape hatch is any
+      registered Mode A command (e.g. `@adaria-ai aso fridgify`) —
+      terminates the active `brand_flows` row automatically
 
 **Exit criteria verification:**
 - [ ] Full Sunday weekly run on adaria-ai produces briefing indistinguishable from growth-agent's, or every difference is documented
