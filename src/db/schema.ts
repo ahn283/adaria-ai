@@ -221,6 +221,27 @@ const MIGRATIONS: Migration[] = [
         ON social_posts(posted_at);
     `,
   },
+  {
+    version: 7,
+    up: `
+      CREATE TABLE IF NOT EXISTS brand_flows (
+        flow_id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        thread_key TEXT NOT NULL,
+        service_id TEXT,
+        state TEXT NOT NULL,
+        data_json TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_brand_flows_user_thread
+        ON brand_flows(user_id, thread_key);
+
+      CREATE INDEX IF NOT EXISTS idx_brand_flows_updated_at
+        ON brand_flows(updated_at);
+    `,
+  },
 ];
 
 /**

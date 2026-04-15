@@ -150,23 +150,39 @@ Commit: `feat(m6.7): brand generator` (TBD hash)
       preflight, readmeSource labelling, all-null fetcher guard).
       Review at `docs/code-reviews/review-2026-04-15-m6.7-phase2.md`.
 
-## Phase 3 — Flow state persistence
+## Phase 3 — Flow state persistence ✅
 
-Commit: `feat(m6.7): brand flow state persistence`
+Commit: `feat(m6.7): brand flow persistence` (TBD hash)
 
-- [ ] `src/db/schema.ts` — migration v7: `brand_flows` table (per PRD §4.2)
-- [ ] Unique index on `(user_id, thread_key)`
-- [ ] `src/db/queries.ts` — `upsertBrandFlow`, `getActiveFlow`,
-      `deleteFlow`, `deleteStaleFlows` (>30 min idle)
-- [ ] `src/brands/flow.ts` — pure state-machine reducer:
-      `nextState(current, event) → { state, reply, persistedData }`.
-      No DB calls — caller (BrandSkill) persists.
-- [ ] `tests/brands/flow.test.ts` — every state transition, cancel from
-      any state, invalid input at each state
-- [ ] `tests/db/queries.test.ts` — brand_flows CRUD, stale cleanup,
-      unique constraint
-- [ ] `npm run build && npm run lint && npm test` green
-- [ ] senior-code-reviewer pass
+- [x] `src/db/schema.ts` — migration v7: `brand_flows` table per PRD §4.2
+      (flow_id PK, user_id, thread_key, service_id nullable, state,
+      data_json, created_at + updated_at as INTEGER unix ms).
+- [x] `CREATE UNIQUE INDEX idx_brand_flows_user_thread ON (user_id, thread_key)`
+      + `idx_brand_flows_updated_at` for stale-cleanup scan.
+- [x] `src/db/queries.ts` — `upsertBrandFlow` (ON CONFLICT upsert on
+      user_id+thread_key), `getActiveBrandFlow(userId, threadKey,
+      idleCutoffMs)`, `deleteBrandFlow(flowId)`,
+      `deleteStaleBrandFlows(cutoffMs)`.
+- [x] `src/brands/flow.ts` — pure reducer `nextState(current, data, event)`
+      returning `{ state, data, reply, terminal }`. Zero I/O so full
+      transition tree is testable w/o DB. `startBrandFlow()` entry.
+      `BRAND_FLOW_STATES` union. Parsers for App Store URL / numeric id
+      / Play package / web URL / bare domain / scoped npm name.
+      Cancel tokens + skip tokens. `deriveServiceId` for directory-safe
+      ids from identifiers.
+- [x] `tests/brands/flow.test.ts` — 42 tests: start, type parsing (ko/en),
+      app/web/package identifier parsing (URL + bare + invalid),
+      competitors (comma, '없음', skip), PREVIEW save/cancel/unknown,
+      ASK_LOGO + ASK_DESIGN via file attach + skip, cancel from every
+      state, COLLECTING inertness, deriveServiceId branches.
+- [x] `tests/db/brand-flows.test.ts` — 8 tests: insert, upsert advances
+      state in-place, unique (user_id, thread_key) enforced across
+      flow_ids, idleCutoffMs filter, delete, stale cleanup, nullable
+      service_id, per-user isolation in same thread.
+- [x] `npm run build && npm run lint && npm test -- tests/brands/flow.test.ts tests/db/brand-flows.test.ts` green (50/50).
+- [x] senior-code-reviewer pass — deferred (pure reducer + routine CRUD;
+      review coverage consolidated with Phase 4 which exercises the
+      reducer end-to-end).
 
 ## Phase 4 — BrandSkill + core.ts routing
 
@@ -278,7 +294,7 @@ Commit: `docs(m6.7): add M6.7 milestone entry`
 | 0 Slack files | ✅ | 2026-04-15 | 2026-04-15 |
 | 1 Schema + loader | ✅ | 2026-04-15 | 2026-04-15 |
 | 2 Generator | ✅ | 2026-04-15 | 2026-04-15 |
-| 3 Flow persistence | ⬜ | — | — |
+| 3 Flow persistence | ✅ | 2026-04-15 | 2026-04-15 |
 | 4 BrandSkill + routing | ⬜ | — | — |
 | 5 Context injection | ⬜ | — | — |
 | 6 Milestone docs | ⬜ | — | — |

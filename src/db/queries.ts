@@ -845,3 +845,100 @@ export function updateSocialPostStatus(
 ): Database.RunResult {
   return getStmt(db, SQL_UPDATE_SOCIAL_POST_STATUS).run(status, id);
 }
+
+// ---------------------------------------------------------------------------
+// Brand flows (M6.7 — multi-turn BrandSkill state persistence)
+// ---------------------------------------------------------------------------
+
+export interface BrandFlowRow {
+  flow_id: string;
+  user_id: string;
+  thread_key: string;
+  service_id: string | null;
+  state: string;
+  data_json: string;
+  created_at: number;
+  updated_at: number;
+}
+
+const SQL_UPSERT_BRAND_FLOW = `
+  INSERT INTO brand_flows (
+    flow_id, user_id, thread_key, service_id, state, data_json,
+    created_at, updated_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT(user_id, thread_key) DO UPDATE SET
+    flow_id = excluded.flow_id,
+    service_id = excluded.service_id,
+    state = excluded.state,
+    data_json = excluded.data_json,
+    updated_at = excluded.updated_at
+`;
+
+const SQL_GET_ACTIVE_BRAND_FLOW = `
+  SELECT * FROM brand_flows
+  WHERE user_id = ? AND thread_key = ? AND updated_at >= ?
+`;
+
+const SQL_DELETE_BRAND_FLOW = "DELETE FROM brand_flows WHERE flow_id = ?";
+
+const SQL_DELETE_STALE_BRAND_FLOWS =
+  "DELETE FROM brand_flows WHERE updated_at < ?";
+
+export function upsertBrandFlow(
+  db: Database.Database,
+  params: {
+    flow_id: string;
+    user_id: string;
+    thread_key: string;
+    service_id: string | null;
+    state: string;
+    data_json: string;
+    created_at: number;
+    updated_at: number;
+  },
+): Database.RunResult {
+  return getStmt(db, SQL_UPSERT_BRAND_FLOW).run(
+    params.flow_id,
+    params.user_id,
+    params.thread_key,
+    params.service_id,
+    params.state,
+    params.data_json,
+    params.created_at,
+    params.updated_at,
+  );
+}
+
+/**
+ * Look up an active brand flow for a (user, thread) pair. Returns null
+ * when no row exists or the row has been idle past `idleCutoffMs`
+ * (milliseconds since epoch — flows older than this are considered
+ * abandoned and should be cleaned up by `deleteStaleBrandFlows`).
+ */
+export function getActiveBrandFlow(
+  db: Database.Database,
+  userId: string,
+  threadKey: string,
+  idleCutoffMs: number,
+): BrandFlowRow | null {
+  const row = getStmt(db, SQL_GET_ACTIVE_BRAND_FLOW).get(
+    userId,
+    threadKey,
+    idleCutoffMs,
+  ) as BrandFlowRow | undefined;
+  return row ?? null;
+}
+
+export function deleteBrandFlow(
+  db: Database.Database,
+  flowId: string,
+): Database.RunResult {
+  return getStmt(db, SQL_DELETE_BRAND_FLOW).run(flowId);
+}
+
+export function deleteStaleBrandFlows(
+  db: Database.Database,
+  cutoffMs: number,
+): Database.RunResult {
+  return getStmt(db, SQL_DELETE_STALE_BRAND_FLOWS).run(cutoffMs);
+}
