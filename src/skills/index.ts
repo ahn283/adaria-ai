@@ -10,7 +10,11 @@
  * skills not yet ported (M5 will remove it).
  */
 
-import type { SkillContext, SkillResult } from "../types/skill.js";
+import type {
+  ContinuationMessage,
+  SkillContext,
+  SkillResult,
+} from "../types/skill.js";
 
 export interface Skill {
   /** Human-readable name (used in logs and Slack messages). */
@@ -26,6 +30,16 @@ export interface Skill {
    * looking it up in `ctx.apps`.
    */
   dispatch(ctx: SkillContext, text: string): Promise<SkillResult>;
+  /**
+   * Optional entry point for multi-turn skills. `core.ts` calls this
+   * when an active `brand_flows` row matches the (userId, threadKey)
+   * of the incoming message. Only BrandSkill implements it today.
+   */
+  continueFlow?(
+    ctx: SkillContext,
+    flowId: string,
+    msg: ContinuationMessage,
+  ): Promise<SkillResult>;
 }
 
 export class SkillRegistry {
@@ -59,6 +73,11 @@ export class SkillRegistry {
         s.commands.some((c) => c.toLowerCase() === lower),
       ) ?? null
     );
+  }
+
+  /** Look up a registered skill by its `.name` field. */
+  findSkillByName(name: string): Skill | null {
+    return this.skills.find((s) => s.name === name) ?? null;
   }
 
   getSkills(): readonly Skill[] {

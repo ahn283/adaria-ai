@@ -17,6 +17,7 @@ import { ShortFormSkill } from "./short-form.js";
 import { SdkRequestSkill } from "./sdk-request.js";
 import { ContentSkill } from "./content.js";
 import { SocialPublishSkill } from "./social-publish.js";
+import { BrandSkill } from "./brand.js";
 import {
   EodinBlogPublisher,
   markdownToHtml,
@@ -105,6 +106,8 @@ export function createProductionRegistry(
       },
     }),
   );
+
+  registry.register(new BrandSkill());
 
   return registry;
 }

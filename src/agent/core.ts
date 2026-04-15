@@ -32,7 +32,11 @@ import crypto from "node:crypto";
 import type Database from "better-sqlite3";
 import type { AdariaConfig } from "../config/schema.js";
 import type { AppConfig } from "../config/apps-schema.js";
-import type { SkillContext, ExecutableSkill } from "../types/skill.js";
+import type {
+  SkillContext,
+  SkillResult,
+  ExecutableSkill,
+} from "../types/skill.js";
 import type {
   IncomingMessage,
   MessengerAdapter,
@@ -249,25 +253,96 @@ export class AgentCore {
 
         // 4. Mode A: skill registry dispatch.
         //    Mode B: fall through to Claude CLI.
-        const skill = this.skillRegistry.findSkill(msg.text);
-        let response: string;
-        if (skill) {
-          logInfo(`Mode A: dispatching to skill "${skill.name}"`);
-          const skillCtx = this.buildSkillContext();
-          // When db is not available (M1 placeholder path), pass a
-          // minimal stub context so placeholder skills can still return
-          // their "not implemented" message.
-          const stubCtx: SkillContext = skillCtx ?? {
-            db: undefined as never,
-            apps: [],
-            config: this.config,
-            runClaude: () => Promise.resolve(""),
-          };
-          const result = await skill.dispatch(stubCtx, msg.text);
-          response = result.summary;
+        //    Mode C (M6.7): if a brand_flows row matches this
+        //    (userId, threadKey), route to BrandSkill.continueFlow
+        //    before Mode A/B so multi-turn skills can reclaim the turn.
+        // DMs have no thread; use a fixed `:dm` suffix so flows persist
+        // across messages from the same user. In channel threads, pin
+        // to `threadId`. `eventTs` is NOT a stable key — each message
+        // has a unique one and would break flow continuity.
+        const threadKey = `${msg.channelId}:${msg.threadId ?? "dm"}`;
+        const flowContext = { userId: msg.userId, threadKey };
+        const activeFlow = this.findActiveBrandFlow(flowContext);
 
-          // Send approval buttons and register pending approvals.
-          for (const item of result.approvals) {
+        // Mode A command takes priority over an active flow — the
+        // operator can always escape a stuck flow by re-issuing any
+        // registered skill command. We terminate the flow first so the
+        // reducer doesn't win the next turn either.
+        const explicitSkill = this.skillRegistry.findSkill(msg.text);
+        if (activeFlow !== null && explicitSkill !== null) {
+          this.db
+            ?.prepare("DELETE FROM brand_flows WHERE flow_id = ?")
+            .run(activeFlow.flow_id);
+          logInfo(
+            `[brand] flow ${activeFlow.flow_id} cancelled by explicit ${explicitSkill.name} command`,
+          );
+        }
+
+        const flowStillActive =
+          activeFlow !== null && explicitSkill === null;
+
+        let response: string;
+        let skillResult: SkillResult | null = null;
+
+        if (flowStillActive && activeFlow !== null) {
+          const brandSkill = this.skillRegistry.findSkillByName("brand");
+          const skillCtx = this.buildSkillContext(flowContext);
+          if (!brandSkill?.continueFlow || !skillCtx) {
+            response =
+              "브랜드 플로우를 이어갈 수 없어. 다시 시작하려면 `@adaria-ai brand` 실행해줘.";
+          } else {
+            logInfo(
+              `Mode C: continuing brand flow ${activeFlow.flow_id} at state ${activeFlow.state}`,
+            );
+            skillResult = await brandSkill.continueFlow(
+              skillCtx,
+              activeFlow.flow_id,
+              {
+                text: msg.text,
+                files: msg.images ?? [],
+              },
+            );
+            response = skillResult.summary;
+          }
+        } else {
+          const skill = explicitSkill;
+          if (skill) {
+            logInfo(`Mode A: dispatching to skill "${skill.name}"`);
+            const skillCtx = this.buildSkillContext(flowContext);
+            const stubCtx: SkillContext = skillCtx ?? {
+              db: undefined as never,
+              apps: [],
+              config: this.config,
+              runClaude: () => Promise.resolve(""),
+              flowContext,
+            };
+            skillResult = await skill.dispatch(stubCtx, msg.text);
+            response = skillResult.summary;
+          } else {
+            logInfo("Mode B: falling through to Claude CLI");
+            response = await this.invokeClaudeWithContext(
+              msg,
+              async (status) => {
+                try {
+                  await this.messenger.updateText(
+                    msg.channelId,
+                    statusMsgId,
+                    status,
+                    msg.threadId,
+                  );
+                } catch {
+                  // Ignore update failures — message may have been deleted.
+                }
+              },
+            );
+          }
+        }
+
+        // Skill approval plumbing — fires whether we came via Mode A or
+        // Mode C (BrandSkill has no approvals today but the contract
+        // stays uniform).
+        if (skillResult) {
+          for (const item of skillResult.approvals) {
             const approvalText = `*[${item.agent}]* ${item.description}`;
             await this.messenger.sendApproval(
               msg.channelId,
@@ -275,12 +350,10 @@ export class AgentCore {
               item.id,
               msg.threadId,
             );
-            // Store payload for execution on approval
             this.approvalPayloads.set(item.id, {
               agent: item.agent,
               payload: item.payload,
             });
-            // Register with ApprovalManager (30 min timeout)
             const timeoutMs =
               (this.config.safety.approvalTimeoutMinutes ?? 30) * 60_000;
             this.approvalManager
@@ -298,23 +371,6 @@ export class AgentCore {
               content: `[approval-request] ${item.agent}: ${item.description}`,
             });
           }
-        } else {
-          logInfo("Mode B: falling through to Claude CLI");
-          response = await this.invokeClaudeWithContext(
-            msg,
-            async (status) => {
-              try {
-                await this.messenger.updateText(
-                  msg.channelId,
-                  statusMsgId,
-                  status,
-                  msg.threadId,
-                );
-              } catch {
-                // Ignore update failures — message may have been deleted.
-              }
-            },
-          );
         }
 
         if (eventTs) {
@@ -611,13 +667,62 @@ export class AgentCore {
    * database is not initialized (M1 placeholder path — skills still
    * receive a minimal context with a stub `runClaude`).
    */
-  private buildSkillContext(): SkillContext | null {
+  /**
+   * Look up an active brand flow row (M6.7). Returns null when no DB
+   * or no matching row. Idle cut-off is the safety.approvalTimeoutMinutes
+   * setting so abandoned flows don't hang around forever.
+   */
+  private findActiveBrandFlow(flowContext: {
+    userId: string;
+    threadKey: string;
+  }): { flow_id: string; state: string } | null {
     if (!this.db) return null;
+    const idleMinutes = this.config.safety.approvalTimeoutMinutes ?? 30;
+    const cutoff = Date.now() - idleMinutes * 60_000;
+    const row = this.db
+      .prepare(
+        "SELECT flow_id, state FROM brand_flows WHERE user_id = ? AND thread_key = ? AND updated_at >= ?",
+      )
+      .get(flowContext.userId, flowContext.threadKey, cutoff) as
+      | { flow_id: string; state: string }
+      | undefined;
+    return row ?? null;
+  }
+
+  private buildSkillContext(
+    flowContext?: { userId: string; threadKey: string },
+  ): SkillContext | null {
+    if (!this.db) return null;
+
+    const downloadFile = this.messenger.downloadImage
+      ? (
+          file: {
+            url: string;
+            mimeType: string;
+            filename?: string;
+            authHeader?: string;
+          },
+          destPath: string,
+        ) =>
+          this.messenger.downloadImage!(
+            {
+              url: file.url,
+              mimeType: file.mimeType,
+              ...(file.filename !== undefined && { filename: file.filename }),
+              ...(file.authHeader !== undefined && {
+                authHeader: file.authHeader,
+              }),
+            },
+            destPath,
+          )
+      : undefined;
 
     return {
       db: this.db,
       apps: this.apps,
       config: this.config,
+      ...(flowContext && { flowContext }),
+      ...(downloadFile && { downloadFile }),
       runClaude: async (prompt: string): Promise<string> => {
         return this.skillClaudeBreaker.execute(async () => {
           await writeAuditLog({

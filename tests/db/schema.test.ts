@@ -36,7 +36,7 @@ describe("initDatabase", () => {
     expect(mode[0]?.journal_mode).toBe("wal");
   });
 
-  it("creates all 12 tables", () => {
+  it("creates all 13 tables", () => {
     const db = initDatabase(tmpDbPath());
     dbs.push(db);
 
@@ -50,6 +50,7 @@ describe("initDatabase", () => {
       "approvals",
       "blog_performance",
       "blog_posts",
+      "brand_flows",
       "competitor_metadata",
       "keyword_rankings",
       "reviews",

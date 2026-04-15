@@ -184,36 +184,56 @@ Commit: `feat(m6.7): brand flow persistence` (TBD hash)
       review coverage consolidated with Phase 4 which exercises the
       reducer end-to-end).
 
-## Phase 4 — BrandSkill + core.ts routing
+## Phase 4 — BrandSkill + core.ts routing ✅
 
-Commit: `feat(m6.7): BrandSkill conversational flow`
+Commit: `feat(m6.7): BrandSkill multi-turn flow` (TBD hash)
 
-- [ ] `src/types/skill.ts` — add `SkillContinuation`, `ContinuationMessage`,
-      optional `Skill.continueFlow`
-- [ ] `src/skills/brand.ts`:
-  - [ ] `dispatch(ctx, text)` — creates flow row, returns
-        `SkillResult { continuation }` expecting type
-  - [ ] `continueFlow(ctx, flowId, msg)` — advances state, handles file
-        downloads via `ctx.messenger.downloadFile()`, calls generator at
-        COLLECTING, renders Block Kit preview card + [저장]/[취소]
-        buttons at PREVIEW, writes brand.yaml on 저장 click, returns
-        next continuation or DONE
-  - [ ] Preview button `action_id` encodes `flow_id` — click handler
-        reuses existing approval-button plumbing from M4
-  - [ ] Handles "취소" / idle cleanup
-- [ ] `src/agent/core.ts` `handleMessage` — NEW flow-routing hook
-      **after** auth check, **before** Mode A command match:
-      query active flow → route to `BrandSkill.continueFlow` → skip
-      rest of dispatch
-- [ ] `core.ts` — after skill return, if `result.continuation` present:
-      upsert flow row, send continuation prompt
-- [ ] Register in `src/skills/registry.ts` with commands `["brand", "브랜드"]`
-- [ ] `tests/skills/brand.test.ts` — full flow happy path per type,
-      cancel mid-flow, idle timeout, file upload (mocked messenger),
-      preview "아니오" path, dry-run path
-- [ ] `npm run build && npm run lint && npm test` green
-- [ ] senior-code-reviewer pass — attention to multi-turn pattern
-      correctness, no regressions for one-shot skills
+- [x] `src/types/skill.ts` — `SkillContinuation` + `ContinuationMessage`
+      exported; optional `Skill.continueFlow` on the interface; optional
+      `SkillContext.flowContext` (userId + threadKey) + `downloadFile`
+      so BrandSkill gets what it needs without broadening the signature
+      of the 8 existing skills.
+- [x] `src/skills/brand.ts`:
+  - [x] `dispatch(ctx, text)` — requires `ctx.flowContext`, starts a
+        new flow via `startBrandFlow()`, persists ASK_TYPE row, returns
+        `SkillResult { continuation }` expecting text.
+  - [x] `continueFlow(ctx, flowId, msg)` — loads flow row, handles
+        image attachments for ASK_LOGO/ASK_DESIGN via `ctx.downloadFile`
+        (MIME whitelist, overwrites existing logo/design-system), runs
+        `nextState` reducer, chains COLLECTING → PREVIEW by calling
+        `generateBrandProfile` synchronously so user sees preview in
+        one turn. Cleans up orphaned `brand.yaml` on PREVIEW cancel
+        (tracks `_yamlPath` in flow data).
+  - [x] Text-based `[저장]` / `[취소]` gate at PREVIEW; full Block Kit
+        button plumbing is deferred (future cleanup — text works).
+  - [x] Handles `취소` at any state, terminal DONE/CANCELLED deletes row.
+- [x] `src/agent/core.ts` — Mode C flow-routing hook:
+  - [x] DM-safe threadKey (`${channelId}:${threadId ?? "dm"}`) so flows
+        persist across DM messages (review H1 fix).
+  - [x] Explicit Mode A command in an active flow wins — terminates
+        the flow first so reducer doesn't keep capturing turns (H2 fix).
+  - [x] `findActiveBrandFlow` uses `safety.approvalTimeoutMinutes` as
+        idle cutoff. Unified approval plumbing across Mode A and C.
+  - [x] `buildSkillContext(flowContext?)` injects `flowContext` +
+        `downloadFile` lazily so existing skills see no change.
+- [x] `src/skills/index.ts` — `findSkillByName()` helper for core.ts
+      routing. `Skill.continueFlow?` optional; existing skills untouched.
+- [x] `src/skills/registry.ts` — `BrandSkill` registered with commands
+      `["brand", "브랜드"]`.
+- [x] `tests/skills/brand.test.ts` — 10 tests: dispatch start +
+      persistence, missing flowContext error, ASK_TYPE → ASK_IDENTIFIER,
+      web flow drives generator, cancel from ASK_TYPE, logo upload +
+      MIME whitelist, unknown flow id, generator error surfacing,
+      orphan brand.yaml cleanup on PREVIEW cancel.
+- [x] `tests/db/schema.test.ts` — updated to expect 13 tables including
+      `brand_flows`.
+- [x] `npm run build && npm run lint && npm test` green (687/689; 2
+      pre-existing unrelated `tests/db/queries.test.ts` failures on main).
+- [x] senior-code-reviewer pass — B+, 0 CRITICAL / 2 HIGH / 4 MEDIUM.
+      H1 (DM threadKey), H2 (Mode A escape), M1 (orphan yaml), M3
+      (no-op ternary) all fixed in-phase. M2 (COLLECTING reply swallow)
+      + M4 (per-thread isolation test) deferred. Review at
+      `docs/code-reviews/review-2026-04-15-m6.7-phase4.md`.
 
 ## Phase 5 — Brand context injection into skills
 
@@ -295,6 +315,6 @@ Commit: `docs(m6.7): add M6.7 milestone entry`
 | 1 Schema + loader | ✅ | 2026-04-15 | 2026-04-15 |
 | 2 Generator | ✅ | 2026-04-15 | 2026-04-15 |
 | 3 Flow persistence | ✅ | 2026-04-15 | 2026-04-15 |
-| 4 BrandSkill + routing | ⬜ | — | — |
+| 4 BrandSkill + routing | ✅ | 2026-04-15 | 2026-04-15 |
 | 5 Context injection | ⬜ | — | — |
 | 6 Milestone docs | ⬜ | — | — |
