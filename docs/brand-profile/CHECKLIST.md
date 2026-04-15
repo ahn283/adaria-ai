@@ -54,24 +54,43 @@ Commit: `feat(m6.7): plumb slack file downloads` (TBD hash)
       work. Review saved at
       `docs/code-reviews/review-2026-04-15-m6.7-phase0.md`.
 
-## Phase 1 — Schema + loader + paths
+## Phase 1 — Schema + loader + paths ✅
 
-Commit: `feat(m6.7): brand profile schema + loader`
+Commit: `feat(m6.7): brand profile schema + loader` (TBD hash)
 
-- [ ] `src/types/brand.ts` — zod schema for `brand.yaml` (identity, voice,
-      audience, visual, competitors, goals, `_meta`)
-- [ ] `src/utils/paths.ts` — `brandsDir(serviceId?: string)` helper
-      anchored at `ADARIA_HOME/brands`
-- [ ] `src/brands/loader.ts`:
-  - [ ] `loadBrandProfile(serviceId)` — parse YAML, validate with zod,
-        return `BrandProfile | null`
-  - [ ] `formatBrandContext(profile)` — ~300-token human-readable block
-  - [ ] `loadBrandImages(serviceId, types)` — glob `logo.*`,
-        `design-system.*`, return `[{ data, media_type }]`
-- [ ] `tests/brands/loader.test.ts` — valid yaml, missing yaml, invalid
-      schema, image extension variants (png/jpg/webp), missing images
-- [ ] `npm run build && npm run lint && npm test` green
-- [ ] senior-code-reviewer pass
+- [x] `src/types/brand.ts` — zod schema for `brand.yaml` (identity, voice,
+      audience, visual, competitors, goals, `_meta`). Section-level +
+      field-level `default()` so minimal YAML is null-safe.
+- [x] `src/utils/paths.ts` — `brandsDir(serviceId?: string)` helper
+      anchored at `ADARIA_HOME/brands`. `ADARIA_HOME` read at call time
+      for test isolation. Whitelist regex
+      `/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/` rejects path separators,
+      NUL/newline/tab/unicode control chars, leading dots, empty.
+- [x] `src/brands/loader.ts`:
+  - [x] `loadBrandProfile(serviceId)` — parse YAML (`JSON_SCHEMA` to
+        block tag expansion), validate with zod, return
+        `BrandProfile | null`. Missing file → null; malformed YAML →
+        `ConfigError`; schema mismatch → `ConfigError`.
+  - [x] `formatBrandContext(profile)` — ~300-token human-readable block
+        covering identity / voice / audience / competitors / visual.
+        `null` → empty string (PRD §1.3 graceful degradation).
+  - [x] `loadBrandImages(serviceId, kinds)` — scans per-service dir for
+        `logo.*` / `design-system.*`, accepts png/jpg/jpeg/webp, returns
+        `[{ data (base64), mediaType, kind }]`. Rejects symlinks via
+        `withFileTypes` + `isFile()`.
+- [x] `tests/brands/loader.test.ts` — 24 tests: brandsDir whitelist
+      (separators, control chars, unicode, dotfile, accepted forms),
+      profile (missing file, valid with defaults, malformed YAML,
+      invalid schema, missing `_meta`), formatter (null, populated,
+      minimal), images (missing dir, png/jpg/jpeg/webp variants,
+      multi-kind, symlink rejection, unsupported ext, kind filter).
+- [x] `npm run build && npm run lint && npm test -- tests/brands/loader.test.ts`
+      green (24/24). Full suite has 2 pre-existing unrelated failures
+      in `tests/db/queries.test.ts` (present on main before change).
+- [x] senior-code-reviewer pass — Grade A-, 0 CRITICAL / 0 HIGH /
+      3 MEDIUM. All 3 MEDIUM fixed in-phase (whitelist regex,
+      symlink rejection, malformed YAML wrap + tests). Review at
+      `docs/code-reviews/review-2026-04-15-m6.7-phase1.md`.
 
 ## Phase 2 — Generator + fetchers + prompt
 
@@ -232,7 +251,7 @@ Commit: `docs(m6.7): add M6.7 milestone entry`
 | Phase | Status | Started | Completed |
 |-------|--------|---------|-----------|
 | 0 Slack files | ✅ | 2026-04-15 | 2026-04-15 |
-| 1 Schema + loader | ⬜ | — | — |
+| 1 Schema + loader | ✅ | 2026-04-15 | 2026-04-15 |
 | 2 Generator | ⬜ | — | — |
 | 3 Flow persistence | ⬜ | — | — |
 | 4 BrandSkill + routing | ⬜ | — | — |
