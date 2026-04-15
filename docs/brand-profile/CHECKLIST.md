@@ -282,21 +282,26 @@ Commit: `feat(m6.7): inject brand context into skills` (TBD hash)
       and the added helper is 15 LOC with its own tests. Review
       coverage consolidated with Phase 6 milestone doc pass.
 
-## Phase 6 — Milestone + docs alignment
+## Phase 6 — Milestone + docs alignment ✅
 
-Commit: `docs(m6.7): add M6.7 milestone entry`
+Commit: `docs(m6.7): add M6.7 milestone entry` (TBD hash)
 
-- [ ] `docs/growth-agent/milestones.md` — new `## M6.7 — Brand profile
-      (~2 days)` section matching M6.5 format
-- [ ] `docs/growth-agent/checklist.md` — new `## M6.7` subsection
-      linking back to `docs/brand-profile/CHECKLIST.md`, plus
-      progress-tracker row
-- [ ] `docs/growth-agent/porting-matrix.md` — mark all M6.7 files as
-      `new` (not ported from pilot-ai or growth-agent)
-- [ ] Cross-link in `CLAUDE.md` "Big-picture architecture" — brief
-      mention of multi-turn skill pattern introduced by BrandSkill
-- [ ] senior-code-reviewer pass (doc-only, skip build + test per
-      CLAUDE.md dev-loop compression rule)
+- [x] `docs/growth-agent/milestones.md` — new `## M6.7 — Brand profile
+      (~2 days)` section matching M6.5 format with a sub-heading per
+      phase, deferred list, and exit criteria.
+- [x] `docs/growth-agent/checklist.md` — new `## M6.7` subsection
+      linking back to `docs/brand-profile/CHECKLIST.md` plus a
+      progress-tracker row (est. 2.0 days, status 🟨, manual E2E
+      folded into M7 parallel run). Total adjusted to ~15.
+- [x] `docs/growth-agent/porting-matrix.md` — new
+      `## NEW — adaria-ai brand profile (🆕 M6.7)` section marking
+      every M6.7 file as fresh (no pilot-ai or growth-agent source).
+- [x] `CLAUDE.md` — added "Multi-turn skills (M6.7)" subsection under
+      Big-picture architecture covering Mode C routing invariants
+      (DM threadKey, Mode A escape, pure-reducer pattern, MCP
+      non-exposure).
+- [x] senior-code-reviewer pass — waived per CLAUDE.md dev-loop rule
+      for doc-only changes.
 
 ---
 
@@ -327,4 +332,4 @@ Commit: `docs(m6.7): add M6.7 milestone entry`
 | 3 Flow persistence | ✅ | 2026-04-15 | 2026-04-15 |
 | 4 BrandSkill + routing | ✅ | 2026-04-15 | 2026-04-15 |
 | 5 Context injection | ✅ | 2026-04-15 | 2026-04-15 |
-| 6 Milestone docs | ⬜ | — | — |
+| 6 Milestone docs | ✅ | 2026-04-15 | 2026-04-15 |

@@ -253,6 +253,97 @@ same API patterns. Threads, TikTok, YouTube Community are new.
 - `ADARIA_DRY_RUN=1` logs the payload without posting.
 - `social_posts` table records every successful post.
 
+## M6.7 — Brand profile (~2 days)
+
+**Goal:** `@adaria-ai brand` drives a multi-turn Slack flow that produces
+`~/.adaria/brands/{serviceId}/brand.yaml` for any app / web / package
+service, and every existing skill injects that profile into Claude so
+generated content reflects the service's voice / positioning / audience.
+
+Full plan: `docs/brand-profile/PRD.md`. Tick items:
+`docs/brand-profile/CHECKLIST.md`.
+
+### Phase 0 — Slack file download plumbing
+
+Extend `SlackAdapter` with `downloadImage(attachment, destPath)` and
+thread `event.files` into `IncomingMessage.images`. MIME whitelist
+(png/jpeg/webp), 5 MB cap, host allowlist (`files.slack.com`,
+`files-edge.slack.com`), path-traversal guard. Requires one-time
+Slack app dashboard change: add `files:read` bot scope, reinstall.
+
+### Phase 1 — Schema + loader + paths
+
+`src/types/brand.ts` zod schema; `brandsDir(serviceId?)` in `paths.ts`
+with a whitelist regex (no path separators, control chars, or leading
+dots); `src/brands/loader.ts` with `loadBrandProfile`,
+`formatBrandContext`, `loadBrandImages` (symlink-rejecting).
+
+### Phase 2 — Generator + fetchers + prompt
+
+`src/brands/fetchers/web.ts` with SSRF defence — pre-flight DNS
+resolution, private-range reject, pin vetted IP into an undici
+`Agent` so socket connect cannot TOCTOU to a rebind; HTTP/HTTPS only;
+`redirect: "error"`; 2 MB body cap. `src/brands/fetchers/package.ts`
+for npm + GitHub README (unauth, 60 req/hr — 403/429 surface as
+`RateLimitError`). `src/brands/generator.ts` dispatches on serviceType,
+sanitises every external field via `sanitizeExternalText`, runs Claude
+with `prompts/brand-generate.md`, writes YAML. Respects
+`ADARIA_DRY_RUN=1`. Throws `ConfigError` when an `app`-type generate
+has no data from any store.
+
+### Phase 3 — Flow state persistence
+
+Migration v7 — `brand_flows` table with `UNIQUE(user_id, thread_key)`.
+`src/brands/flow.ts` is a pure reducer (`nextState` + `startBrandFlow`)
+so the conversation tree is testable without DB or messenger mocks.
+Parsers cover App Store URL / numeric id / Play Store package / web
+URL / scoped npm names. Cancel + skip tokens in both 한국어 and English.
+
+### Phase 4 — BrandSkill + core.ts routing
+
+`src/skills/brand.ts` (`dispatch` + `continueFlow`) writes `brand_flows`
+rows directly and cleans up orphaned `brand.yaml` on PREVIEW cancel.
+`core.ts` gains "Mode C" — a flow-lookup hook before Mode A/B:
+
+- DM-safe thread key (`${channelId}:${threadId ?? "dm"}`).
+- Explicit Mode A command terminates an active flow (escape hatch).
+- `SkillContext.flowContext` + `downloadFile` injected lazily so the
+  existing 8 skills need no signature change.
+
+Register `BrandSkill` with commands `["brand", "브랜드"]`. Not exposed
+as an MCP tool (invariant stays: MCP set is 4 read-only tools).
+
+### Phase 5 — Brand context injection
+
+Append `## Brand context\n{{brandContext}}` to every marketing prompt.
+`preparePrompt` resolves residual `{{brandContext}}` placeholders to
+empty string so callers that don't stage a profile stay green.
+`src/brands/context.ts` — `resolveBrandContextForApp(appId)` helper
+that swallows bad-yaml / IO errors. ASO / review / onboarding /
+seo-blog / short-form / social-publish load context once per dispatch
+and thread it through every `preparePrompt` call.
+
+**Deferred** to future follow-ups: image (logo + design-system) vision
+content blocks (needs Anthropic SDK path, not CLI runner); text-only
+injection for `content.ts` / `sdk-request.ts` (they don't call
+`preparePrompt` today — small touch-up when they do).
+
+### Exit criteria
+
+- `@adaria-ai brand` completes the flow end-to-end for at least one
+  `app`, one `web`, and one `package` service via Slack thread.
+- Logo + design-system uploads land at
+  `~/.adaria/brands/{serviceId}/{logo,design-system}.{png|jpg|webp}`.
+- `@adaria-ai aso fridgify` (profile present) produces output that
+  visibly reflects brand voice; removing the profile leaves skill
+  output unchanged structurally with an empty brand section.
+- Daemon restart mid-flow → user's next message resumes from the
+  persisted state (`brand_flows` is durable).
+- `ADARIA_DRY_RUN=1` brand flow logs but writes no `brand.yaml` or
+  images.
+- `npm run build && npm run lint && npm test` green (pre-existing
+  `tests/db/queries.test.ts` failures are out of scope).
+
 ## M7 — Parity + cutover prep (~1 day)
 
 **Goal:** adaria-ai matches growth-agent's current capability. Cut over is safe.

@@ -354,6 +354,32 @@ CI) are listed at the end.
 - [ ] `social_posts` table records every successful post
 - [x] All social tests pass (`npm test`) — 33 social + skill tests, 521 total
 
+## M6.7 — Brand profile (~2 days)
+
+Full tick list in `docs/brand-profile/CHECKLIST.md`. Summary below.
+
+- [x] Phase 0 — Slack `downloadImage` plumbing + host allowlist + file
+      forwarding (commit `662ae6f`)
+- [x] Phase 1 — `src/types/brand.ts` zod schema, `brandsDir()` with
+      whitelist regex, `src/brands/loader.ts` with symlink-rejecting
+      image loader (commit `e7f8350`)
+- [x] Phase 2 — web fetcher with DNS-pinned undici `Agent` (closes
+      SSRF TOCTOU), npm + GitHub README fetcher, Claude-driven
+      generator with `ADARIA_DRY_RUN` short-circuit (commit `7e65111`)
+- [x] Phase 3 — migration v7 `brand_flows` table, pure-reducer state
+      machine in `src/brands/flow.ts` (commit `cd14ac8`)
+- [x] Phase 4 — BrandSkill `dispatch` + `continueFlow`, Mode C routing
+      in `core.ts` with DM-safe threadKey and Mode A escape hatch
+      (commit `796a940`)
+- [x] Phase 5 — `preparePrompt` brand-context fallback, 13 prompt
+      templates gain `{{brandContext}}`, 6 skills load profiles per
+      dispatch (commit `4cebb53`)
+- [ ] Phase 6 — milestone + porting-matrix + CLAUDE.md alignment
+      (this commit)
+
+**Exit criteria verification:** see `docs/brand-profile/CHECKLIST.md`
+(manual Slack E2E pending — covered by M7 parallel run).
+
 ## M7 — Parity + cutover prep (~1 day)
 
 **Goal:** adaria-ai matches growth-agent. Cutover is safe.
@@ -535,7 +561,8 @@ CI) are listed at the end.
 | M5.5 Mode B tools | 0.5 | 🟨 | 2026-04-12 | — (4 tools + prompt-injection tests landed; integration test deferred to M7 parallel) |
 | M6 Orchestrators | 1.0 | 🟨 | 2026-04-12 | — (code + Block Kit briefing + tests landed; pending manual verify: Slack briefing + launchctl) |
 | M6.5 Social publishing | 3.0 | 🟨 | 2026-04-12 | — (6 clients + skill + smoke script + all tests landed; manual platform verify pending) |
+| M6.7 Brand profile | 2.0 | 🟨 | 2026-04-15 | — (all 6 phases landed; manual Slack flow E2E folded into M7 parallel run) |
 | M7 Parity + parallel | 1.0 | 🟨 | 2026-04-12 | — (all code items done: approval wiring, doctor auth, 4 docs, snapshot script; parallel run execution pending) |
 | M8 Cutover | 0.5 | ⬜ | — | — |
 | M9 npm publish | 0.5 | ⬜ | — | — |
-| **Total** | **~13** | | | |
+| **Total** | **~15** | | | |

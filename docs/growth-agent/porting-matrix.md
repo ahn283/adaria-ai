@@ -127,6 +127,37 @@ tool descriptions. M5.5 adds test cases for "trick Claude into running a
 non-whitelisted query" and "trick Claude into leaking raw review text to
 Slack when it should be summarised".
 
+## NEW — adaria-ai brand profile (🆕 M6.7)
+
+All M6.7 files are fresh — neither pilot-ai nor growth-agent had a
+brand profile subsystem. Plan in `docs/brand-profile/PRD.md`.
+
+| Target | Purpose | Notes |
+|--------|---------|-------|
+| `src/types/brand.ts` | zod schema for `brand.yaml` + `BrandImage` interface | Phase 1 |
+| `src/utils/paths.ts` — `brandsDir(serviceId?)` | Path helper with whitelist regex guard | Phase 1 |
+| `src/brands/loader.ts` | `loadBrandProfile`, `formatBrandContext`, `loadBrandImages` (rejects symlinks) | Phase 1 |
+| `src/brands/fetchers/web.ts` | HTML + meta + OG + CSS-var fetcher; undici `Agent` pins resolved IP to close SSRF TOCTOU | Phase 2 |
+| `src/brands/fetchers/package.ts` | npm + GitHub README (unauth); 403/429 → `RateLimitError` | Phase 2 |
+| `src/brands/generator.ts` | Type dispatch → collect → sanitise → Claude → YAML; `ADARIA_DRY_RUN=1` short-circuit | Phase 2 |
+| `prompts/brand-generate.md` | Shared Claude analysis prompt for all 3 service types | Phase 2 |
+| `src/db/schema.ts` migration v7 | `brand_flows` table (`flow_id` PK, `UNIQUE(user_id, thread_key)`) | Phase 3 |
+| `src/db/queries.ts` — brand flow helpers | `upsertBrandFlow`, `getActiveBrandFlow`, `deleteBrandFlow`, `deleteStaleBrandFlows` | Phase 3 |
+| `src/brands/flow.ts` | Pure reducer state machine (zero I/O — caller owns persistence) | Phase 3 |
+| `src/skills/brand.ts` | BrandSkill — `dispatch` + `continueFlow`; Mode A registered with `["brand", "브랜드"]` | Phase 4 |
+| `src/types/skill.ts` adds | `SkillContinuation`, `ContinuationMessage`, optional `Skill.continueFlow`, optional `SkillContext.flowContext`/`downloadFile` | Phase 4 |
+| `src/agent/core.ts` adds | Mode C routing hook (flow lookup before Mode A/B), DM-safe threadKey, Mode A escape, `findActiveBrandFlow`, `findSkillByName` | Phase 4 |
+| `src/brands/context.ts` | `resolveBrandContextForApp(appId)` — wraps loader + swallows bad-yaml/IO errors for orchestrator resilience | Phase 5 |
+| `src/prompts/loader.ts` modified | `preparePrompt` resolves unfilled `{{brandContext}}` to empty string | Phase 5 |
+| `prompts/*.md` (13 files) | Appended `## Brand context\n{{brandContext}}` to every marketing template | Phase 5 |
+| `src/skills/{aso,review,onboarding,seo-blog,short-form,social-publish}.ts` | Load profile via `resolveBrandContextForApp` + thread through `preparePrompt` calls | Phase 5 |
+| `src/messenger/slack.ts` — `downloadImage` + `event.files` forwarding | Ported pattern from Phase 0 (commit `662ae6f`) | Phase 0 |
+
+**Invariants held:** BrandSkill is a Mode A skill, **not** exposed as
+an MCP tool (MCP set stays at the 4 read-only tools). No new approval
+gate — writes are local-only under `~/.adaria/brands/`. No
+write-path added to the 4 MCP tools.
+
 ## From pilot-ai/src/index.ts
 
 | Source | Action | Target | Notes |
