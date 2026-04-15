@@ -164,12 +164,13 @@ describe("queries", () => {
 
   describe("agent metrics", () => {
     it("upserts agent metric (insert then update on conflict)", () => {
+      const today = new Date().toISOString().slice(0, 10);
       q.insertAgentMetric(db, {
-        app_id: "app1", agent: "aso", run_date: "2026-04-12",
+        app_id: "app1", agent: "aso", run_date: today,
         duration_ms: 5000, status: "success",
       });
       q.insertAgentMetric(db, {
-        app_id: "app1", agent: "aso", run_date: "2026-04-12",
+        app_id: "app1", agent: "aso", run_date: today,
         duration_ms: 6000, status: "partial", alerts_count: 2,
       });
 
@@ -181,8 +182,9 @@ describe("queries", () => {
     });
 
     it("serializes metadata as JSON", () => {
+      const today = new Date().toISOString().slice(0, 10);
       q.insertAgentMetric(db, {
-        app_id: "app1", agent: "review", run_date: "2026-04-12",
+        app_id: "app1", agent: "review", run_date: today,
         duration_ms: 1000, status: "success",
         metadata: { processed: 5, skipped: 1 },
       });
@@ -192,12 +194,19 @@ describe("queries", () => {
     });
 
     it("returns agent trend", () => {
+      const now = new Date();
+      const day1 = new Date(now.getTime() - 2 * 86_400_000)
+        .toISOString()
+        .slice(0, 10);
+      const day2 = new Date(now.getTime() - 86_400_000)
+        .toISOString()
+        .slice(0, 10);
       q.insertAgentMetric(db, {
-        app_id: "app1", agent: "aso", run_date: "2026-04-10",
+        app_id: "app1", agent: "aso", run_date: day1,
         duration_ms: 5000, status: "success",
       });
       q.insertAgentMetric(db, {
-        app_id: "app1", agent: "aso", run_date: "2026-04-11",
+        app_id: "app1", agent: "aso", run_date: day2,
         duration_ms: 6000, status: "success",
       });
 

@@ -38,3 +38,6 @@ logs/
 
 # claude code
 .claude/agent-memory/
+
+# local design scratch (logo iterations, mockups) — not a shipped asset
+design/

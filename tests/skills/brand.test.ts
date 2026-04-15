@@ -302,6 +302,39 @@ describe("BrandSkill.continueFlow", () => {
     db.close();
   });
 
+  it("isolates concurrent flows for the same user in different threads", async () => {
+    const db = initDatabase(tmpDbPath());
+    const skill = new BrandSkill();
+
+    const ctxA = mkCtx(db, {
+      flowContext: { userId: "U1", threadKey: "C1:thread-A" },
+    });
+    const ctxB = mkCtx(db, {
+      flowContext: { userId: "U1", threadKey: "C1:thread-B" },
+    });
+
+    const a = await skill.dispatch(ctxA, "brand");
+    const b = await skill.dispatch(ctxB, "brand");
+
+    expect(a.continuation?.flowId).not.toBe(b.continuation?.flowId);
+
+    // Advance thread A without disturbing thread B.
+    await skill.continueFlow(ctxA, a.continuation!.flowId, {
+      text: "app",
+      files: [],
+    });
+
+    const rowA = db
+      .prepare("SELECT state FROM brand_flows WHERE flow_id = ?")
+      .get(a.continuation!.flowId) as { state: string };
+    const rowB = db
+      .prepare("SELECT state FROM brand_flows WHERE flow_id = ?")
+      .get(b.continuation!.flowId) as { state: string };
+    expect(rowA.state).toBe("ASK_IDENTIFIER");
+    expect(rowB.state).toBe("ASK_TYPE");
+    db.close();
+  });
+
   it("surfaces generator errors as CANCELLED transition", async () => {
     const db = initDatabase(tmpDbPath());
     const runGenerate = vi.fn(async () => {
