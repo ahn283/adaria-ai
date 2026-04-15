@@ -1,4 +1,8 @@
-import { describe, it, expect, vi } from "vitest";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import { ContentSkill } from "../../src/skills/content.js";
 import type { SkillContext } from "../../src/types/skill.js";
 import type { AppConfig } from "../../src/config/apps-schema.js";
@@ -59,5 +63,64 @@ describe("ContentSkill", () => {
 
     const result = await skill.dispatch(ctx, "content fridgify");
     expect(result.summary).toContain("0 short-form scripts");
+  });
+
+  describe("brand context injection", () => {
+    let tempHome: string;
+    const originalHome = process.env["ADARIA_HOME"];
+
+    beforeEach(async () => {
+      tempHome = await fs.mkdtemp(path.join(os.tmpdir(), "adaria-content-"));
+      process.env["ADARIA_HOME"] = tempHome;
+    });
+
+    afterEach(async () => {
+      await fs.rm(tempHome, { recursive: true, force: true });
+      if (originalHome === undefined) delete process.env["ADARIA_HOME"];
+      else process.env["ADARIA_HOME"] = originalHome;
+    });
+
+    it("omits the brand block when no brand.yaml exists", async () => {
+      const skill = new ContentSkill();
+      const ctx = createCtx();
+      await skill.dispatch(ctx, "content fridgify");
+      const prompts = (ctx.runClaude as ReturnType<typeof vi.fn>).mock.calls.map(
+        (c) => c[0] as string,
+      );
+      for (const p of prompts) {
+        expect(p).not.toContain("## Brand context");
+      }
+    });
+
+    it("injects sanitised brand context when brand.yaml exists", async () => {
+      const dir = path.join(tempHome, "brands", "fridgify");
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(
+        path.join(dir, "brand.yaml"),
+        `
+_meta:
+  serviceType: app
+  generatedAt: "2026-04-16T00:00:00Z"
+identity:
+  tagline: Never waste food <script>alert(1)</script>
+voice:
+  tone: friendly, casual
+`,
+      );
+
+      const skill = new ContentSkill();
+      const ctx = createCtx();
+      await skill.dispatch(ctx, "content fridgify");
+      const prompts = (ctx.runClaude as ReturnType<typeof vi.fn>).mock.calls.map(
+        (c) => c[0] as string,
+      );
+      expect(prompts).toHaveLength(2);
+      for (const p of prompts) {
+        expect(p).toContain("## Brand context");
+        expect(p).toContain("friendly, casual");
+        // sanitizeExternalText strips raw HTML tags.
+        expect(p).not.toContain("<script>");
+      }
+    });
   });
 });

@@ -420,6 +420,14 @@ Full tick list in `docs/brand-profile/CHECKLIST.md`. Summary below.
         next message → flow resumes at persisted state
   - [ ] `ADARIA_DRY_RUN=1 @adaria-ai brand` path logs would-be writes
         but creates no `brand.yaml` or image files
+  - [ ] Stale flow cleanup — leave a flow idle past
+        `safety.approvalTimeoutMinutes` (default 30); next message in
+        the same thread must start a fresh `ASK_TYPE` turn instead of
+        resuming the abandoned state
+  - [ ] Shared channel isolation — if the parallel run includes a
+        second allowlisted user, confirm U1 and U2 can run independent
+        brand flows in the same thread root without clobbering each
+        other's `brand_flows` row
 
 ### Daemon wiring (deferred from M6/M6.5)
 

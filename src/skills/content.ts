@@ -18,9 +18,14 @@ import type { SkillContext, SkillResult } from "../types/skill.js";
 import type { AppConfig } from "../config/apps-schema.js";
 import { warn as logWarn } from "../utils/logger.js";
 import { resolveBrandContextForApp } from "../brands/context.js";
+import { sanitizeExternalText } from "../security/prompt-guard.js";
 
 function brandBlock(brandContext: string): string {
-  return brandContext ? `\n\n## Brand context\n${brandContext}` : "";
+  if (!brandContext) return "";
+  // brand.yaml is operator-editable; route through sanitizeExternalText
+  // for hygiene consistency with the rest of the skill prompts, which
+  // always embed external text through preparePrompt.
+  return `\n\n## Brand context\n${sanitizeExternalText(brandContext, 2000)}`;
 }
 
 export class ContentSkill implements Skill {
