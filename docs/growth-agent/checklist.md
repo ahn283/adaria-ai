@@ -389,7 +389,9 @@ Full tick list in `docs/brand-profile/CHECKLIST.md`. Summary below.
 
 ### Parallel run setup
 
-- [ ] Set `ADARIA_DRY_RUN=1` in adaria-ai plist — disables all write paths
+- [ ] `adaria-ai stop && adaria-ai start --dry-run` — re-renders all 3
+      plists with `ADARIA_DRY_RUN=1` injected into EnvironmentVariables.
+      Reverting is `adaria-ai start` (no flag) which strips it back out.
 - [ ] Point adaria-ai Slack output to DM channel (not #growth)
 - [ ] Verify adaria-ai reads from same data sources but writes nothing
 - [ ] Both daemons running: growth-agent (production #growth) + adaria-ai (DM, dry-run)
