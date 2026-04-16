@@ -11,8 +11,6 @@ import {
   type SocialPostContent,
   type SocialPostResult,
   type ValidationResult,
-  isDryRun,
-  dryRunResult,
 } from "./base.js";
 import * as logger from "../utils/logger.js";
 
@@ -31,11 +29,6 @@ export class TikTokClient implements SocialClient {
   constructor(private readonly config: TikTokConfig) {}
 
   async post(content: SocialPostContent): Promise<SocialPostResult> {
-    if (isDryRun()) {
-      logger.info(`[tiktok] DRY_RUN: would post: ${content.text.slice(0, 100)}`);
-      return dryRunResult("tiktok", content);
-    }
-
     const text = this.buildText(content);
     const validation = this.validateContent(text);
     if (!validation.valid) {

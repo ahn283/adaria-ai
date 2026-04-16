@@ -10,8 +10,6 @@ import {
   type SocialPostContent,
   type SocialPostResult,
   type ValidationResult,
-  isDryRun,
-  dryRunResult,
 } from "./base.js";
 import * as logger from "../utils/logger.js";
 
@@ -29,11 +27,6 @@ export class ThreadsClient implements SocialClient {
   constructor(private readonly config: ThreadsConfig) {}
 
   async post(content: SocialPostContent): Promise<SocialPostResult> {
-    if (isDryRun()) {
-      logger.info(`[threads] DRY_RUN: would post: ${content.text.slice(0, 100)}`);
-      return dryRunResult("threads", content);
-    }
-
     const text = this.buildText(content);
     const validation = this.validateContent(text);
     if (!validation.valid) {
@@ -130,10 +123,6 @@ export class ThreadsClient implements SocialClient {
   }
 
   async deletePost(postId: string): Promise<boolean> {
-    if (isDryRun()) {
-      logger.info(`[threads] DRY_RUN: would delete post ${postId}`);
-      return true;
-    }
     try {
       const response = await fetch(
         `${BASE_URL}/${postId}?access_token=${encodeURIComponent(this.config.accessToken)}`,

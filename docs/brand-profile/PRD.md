@@ -302,13 +302,13 @@ Image injection format (Claude vision content blocks): prepend to the
 user-content array **before** the text block to maximise prompt cache
 hit rate across calls.
 
-### 4.6 Approval & dry-run
+### 4.6 Approval
 
 - **No approval gate.** BrandSkill writes only to `~/.adaria/brands/` —
   local files, user-driven. Not added to `safety.ts`.
-- **`ADARIA_DRY_RUN=1`:** skip external fetches (store / web / npm /
-  GitHub), skip Claude call, skip file writes. Log would-be payload.
-  Preview reply still shown with `[DRY_RUN]` prefix.
+- **No dry-run flag.** The original PRD added an `ADARIA_DRY_RUN=1`
+  short-circuit; it was removed in M7-cleanup along with every other
+  dry-run branch. The user-facing PREVIEW step gates the disk write.
 
 ---
 
@@ -398,8 +398,9 @@ CLI runner cache it at the session level.
 4. **Image injection**: place known logo → run `content-agent` skill →
    verify Claude API call payload contains image block (inspect audit
    log).
-5. **Dry-run**: `ADARIA_DRY_RUN=1 @adaria-ai brand` → no external
-   fetches, no file writes, preview labelled `[DRY_RUN]`.
+5. **Cancel at PREVIEW**: complete the flow up to PREVIEW, reply
+   `취소` → `brand.yaml` is removed (orphan cleanup) and the flow row
+   is deleted.
 
 ---
 

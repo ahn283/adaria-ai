@@ -178,7 +178,7 @@ CI) are listed at the end.
 - [x] Write `src/prompts/loader.ts` — template loader with `{{var}}` substitution from bundled prompts/
 - [x] Copy 4 ASO prompt files to `prompts/` (aso-metadata, aso-screenshots, aso-inapp-events, aso-description)
 - [x] Write `tests/skills/aso.test.ts` — 15 tests: dispatch with/without app name, error handling, DB insertion, collector integration, Claude error isolation, approval item generation, platform-specific behavior
-- [x] Write `scripts/snapshot-briefing.ts` — captures weekly analysis to JSON for M7 parity diff; `npm run snapshot:briefing`
+- [x] ~~Write `scripts/snapshot-briefing.ts` — captures weekly analysis to JSON for M7 parity diff~~ (removed in M7-cleanup; the parity comparison the script was built for never happens)
 
 **Exit criteria verification:**
 - [ ] `@adaria-ai aso fridgify` returns the same analysis growth-agent produces
@@ -193,15 +193,15 @@ CI) are listed at the end.
 - [x] Port `src/skills/seo-blog.ts` + test — 7 tests:
   - [x] Fridgify recipe branch with cascade
   - [x] Prompt sanitization: all 6 attacker-controllable fields restored from growth-agent (C1). `sanitizeUserText` strips injection patterns + HTML tags + caps length.
-  - [x] `ADARIA_DRY_RUN=1` check on `publishApprovedPosts` write path (C2)
   - [x] Test includes injection attempt case (recipe name + ingredients)
+  - [x] `ADARIA_DRY_RUN` short-circuit removed (was originally added for M7 parallel run; removed in M7-cleanup since the project never goes parallel — approval gate is the only safeguard)
 - [x] Port `src/skills/short-form.ts` + test — 3 tests. YouTube performance collection + idea generation.
 - [x] Port `src/skills/sdk-request.ts` + test — 4 tests. Stateless class with `analyze()` for orchestrator + `dispatch()` for interactive. Deduplicates by event_name.
 - [x] Port `src/skills/content.ts` + test — 3 tests. Kept separate from short-form (covers Pinterest pins + trend content). Uses inline prompts (growth-agent used Anthropic SDK directly; adaria-ai standardizes on ctx.runClaude).
 - [x] Copy 8 remaining prompt files to `prompts/` (review-sentiment, review-clustering, review-replies, onboarding-hypotheses, onboarding-review-timing, seo-blog, seo-blog-fridgify-recipe, short-form-ideas)
 - [x] Merge growth-agent `approval-manager.js` gates into `src/agent/safety.ts` — 5 gate types defined, core.ts wires approval buttons + requestApproval + onApprovalResolved
 - [x] Wire approval buttons in Slack Block Kit — core.ts sends approval via sendApproval for each SkillResult.approvals item
-- [ ] Verify approve/reject/non-allowlisted flows — requires manual Slack testing (M7 parallel run)
+- [ ] Verify approve/reject/non-allowlisted flows — requires manual Slack testing (M7 pre-launch smoke)
 
 **Exit criteria verification:**
 - [ ] `@adaria-ai blog fridgify` generates + stages blog posts with approval buttons
@@ -271,8 +271,7 @@ CI) are listed at the end.
 ### Phase 1: Platform clients
 
 - [x] Write `src/social/base.ts` — `SocialClient` interface + `SocialPostResult` type:
-  - [ ] `post(content)`, `validateContent(text)`, `uploadMedia(url)`, `deletePost(id)`
-  - [ ] `ADARIA_DRY_RUN` check in every `post()` implementation
+  - [x] `post(content)`, `validateContent(text)`, `uploadMedia(url)`, `deletePost(id)`
 - [x] Write `src/social/twitter.ts` — Twitter API v2 + v1.1 media upload:
   - [x] OAuth 1.0a header signing (manual HMAC-SHA1)
   - [x] 280-char validation with t.co URL normalization (23 chars per URL)
@@ -326,7 +325,6 @@ CI) are listed at the end.
   - [x] Parses Claude JSON output → per-platform content
   - [x] Produces `ApprovalItem[]` — one per enabled platform
   - [x] `executePost()` method for approval callback → `client.post()` → DB insert
-  - [x] `ADARIA_DRY_RUN` respected (via client.post → isDryRun)
 - [x] Write `prompts/social-publish.md`:
   - [x] Platform-specific character limits and formatting rules
   - [x] Hashtag conventions per platform
@@ -337,22 +335,19 @@ CI) are listed at the end.
 
 ### Phase 3: Tests
 
-- [x] Write `tests/social/base.test.ts` — isDryRun, dryRunResult (4 tests)
-- [x] Write `tests/social/twitter.test.ts` — char validation, URL normalization, DRY_RUN (5 tests)
-- [x] Write `tests/social/facebook.test.ts` — validation, short text suggestion, DRY_RUN (4 tests)
-- [x] Write `tests/social/threads.test.ts` — 500-char validation, DRY_RUN (3 tests)
-- [x] Write `tests/social/tiktok.test.ts` — caption limit, image requirement, DRY_RUN (3 tests)
-- [x] Write `tests/social/youtube.test.ts` — 5000-char limit, DRY_RUN (2 tests)
-- [x] Write `tests/social/linkedin.test.ts` — 3000 limit, engagement suggestion, hashtag count, DRY_RUN (6 tests)
+- [x] Write `tests/social/twitter.test.ts` — char validation, URL normalization
+- [x] Write `tests/social/facebook.test.ts` — validation, short text suggestion
+- [x] Write `tests/social/threads.test.ts` — 500-char validation
+- [x] Write `tests/social/tiktok.test.ts` — caption limit, image requirement
+- [x] Write `tests/social/youtube.test.ts` — 5000-char limit
+- [x] Write `tests/social/linkedin.test.ts` — 3000 limit, engagement suggestion, hashtag count
 - [x] Write `tests/skills/social-publish.test.ts` — dispatch, approval items, no-platforms, app not found, invalid JSON, Claude error (6 tests)
-- [x] Write `scripts/smoke-social.ts` — validates + dry-run posts for all 6 platforms; `npm run smoke:social`
 
 **Exit criteria verification:**
 - [ ] `@adaria-ai social fridgify` generates content for all enabled platforms with approval buttons
 - [ ] Approve → post appears on target platform (at least Twitter + one other verified)
-- [ ] `ADARIA_DRY_RUN=1` logs payload without posting
 - [ ] `social_posts` table records every successful post
-- [x] All social tests pass (`npm test`) — 33 social + skill tests, 521 total
+- [x] All social tests pass (`npm test`)
 
 ## M6.7 — Brand profile (~2 days)
 
@@ -381,55 +376,21 @@ Full tick list in `docs/brand-profile/CHECKLIST.md`. Summary below.
       `design/` gitignored (commit `00fb722`)
 
 **Exit criteria verification:** see `docs/brand-profile/CHECKLIST.md`
-(manual Slack E2E pending — covered by M7 parallel run).
+(manual Slack E2E pending — covered by M7 pre-launch smoke).
 
-## M7 — Parity + cutover prep (~1 day)
+## M7 — Pre-launch smoke (~0.5 day)
 
-**Goal:** adaria-ai matches growth-agent. Cutover is safe.
+**Goal:** Verify adaria-ai is wired correctly before the first live
+weekly briefing. growth-agent is not in active use, so there is no
+parity comparison.
 
-### Parallel run setup
+### Prerequisites
 
-- [ ] `adaria-ai stop && adaria-ai start --dry-run` — re-renders all 3
-      plists with `ADARIA_DRY_RUN=1` injected into EnvironmentVariables.
-      Reverting is `adaria-ai start` (no flag) which strips it back out.
-- [ ] Point adaria-ai Slack output to DM channel (not #growth)
-- [ ] Verify adaria-ai reads from same data sources but writes nothing
-- [ ] Both daemons running: growth-agent (production #growth) + adaria-ai (DM, dry-run)
-
-### Parity verification
-
-- [ ] Run `scripts/snapshot-briefing.ts` on adaria-ai
-- [ ] Run equivalent extractor on growth-agent
-- [ ] Diff the two Sunday briefings section-by-section
-- [ ] Every section matches within tolerance OR difference is explainable
-- [ ] Verify approval buttons work end-to-end in DM:
-  - [ ] Blog publish approval (dry-run — log what would be published)
-  - [ ] Review reply approval (dry-run)
-  - [ ] Metadata change approval (dry-run)
-- [ ] **M6.7 brand flow E2E (new):**
-  - [ ] `@adaria-ai brand` in DM → complete flow for service type `app`
-        (e.g. Fridgify via App Store URL + Play package)
-  - [ ] `@adaria-ai brand` → complete flow for `web` (e.g. `https://eodin.app`)
-  - [ ] `@adaria-ai brand` → complete flow for `package`
-        (e.g. `@eodin/analytics-sdk`)
-  - [ ] Upload logo + design-system images in-flow; verify
-        `~/.adaria/brands/{id}/{logo,design-system}.*` written
-  - [ ] `@adaria-ai aso fridgify` with `brand.yaml` present → output
-        reflects brand voice (spot-check); remove yaml → skill still
-        succeeds with empty brand section
-  - [ ] Kill `adaria-ai daemon` mid-flow (state = ASK_IDENTIFIER),
-        `launchctl kickstart -k gui/$UID/com.adaria-ai.daemon`, send
-        next message → flow resumes at persisted state
-  - [ ] `ADARIA_DRY_RUN=1 @adaria-ai brand` path logs would-be writes
-        but creates no `brand.yaml` or image files
-  - [ ] Stale flow cleanup — leave a flow idle past
-        `safety.approvalTimeoutMinutes` (default 30); next message in
-        the same thread must start a fresh `ASK_TYPE` turn instead of
-        resuming the abandoned state
-  - [ ] Shared channel isolation — if the parallel run includes a
-        second allowlisted user, confirm U1 and U2 can run independent
-        brand flows in the same thread root without clobbering each
-        other's `brand_flows` row
+- [ ] Slack app dashboard → Bot Token Scopes → add `files:read` and
+      reinstall the app (one-time, required for M6.7 brand uploads)
+- [ ] `~/.adaria/config.yaml` → set `slack.briefingChannel` to your
+      DM channel (`D...`) for the smoke window so test runs do not
+      hit the production channel
 
 ### Daemon wiring (deferred from M6/M6.5)
 
@@ -461,47 +422,52 @@ Full tick list in `docs/brand-profile/CHECKLIST.md`. Summary below.
 - [x] Write `docs/SKILLS.md` — skill interface, built-in skills, adding new skills, testing
 - [x] Start `docs/PORTING-LOG.md` — M1–M7 surprises and decisions
 
-### Operational runbook (M7 parallel week)
+### Smoke run (in DM)
 
-- [ ] **Do not** run `claude /login` this week (shared auth state)
-- [ ] **Do not** commit to growth-agent unless it's a Slack-down fix
-- [ ] Monitor both daemons daily via `adaria-ai status` / `growth-agent status`
-- [ ] Before starting: Slack app dashboard → Bot Token Scopes → add
-      `files:read` and reinstall (one-time prerequisite for the M6.7
-      brand file uploads; no-op for other skills)
-- [ ] If brand flow gets stuck mid-E2E, escape hatch is any
-      registered Mode A command (e.g. `@adaria-ai aso fridgify`) —
-      terminates the active `brand_flows` row automatically
+- [ ] `adaria-ai doctor` — every check green or every red explained
+- [ ] Approval-gate sanity (any one of):
+  - [ ] Blog publish: trigger `@adaria-ai blog fridgify`, click `Reject`
+        on the resulting button — no post lands on Eodin Blog
+  - [ ] Review reply: trigger a review-reply approval, click `Reject`
+- [ ] Brand flow E2E (per `docs/brand-profile/PRD.md` §8):
+  - [ ] `@adaria-ai brand` in DM → complete flow for service type `app`
+        (e.g. Fridgify via App Store URL + Play package)
+  - [ ] `@adaria-ai brand` → complete flow for `web` (e.g. `https://eodin.app`)
+  - [ ] `@adaria-ai brand` → complete flow for `package`
+        (e.g. `@eodin/analytics-sdk`)
+  - [ ] Upload logo + design-system images in-flow; verify
+        `~/.adaria/brands/{id}/{logo,design-system}.*` written
+  - [ ] `@adaria-ai aso fridgify` with `brand.yaml` present → output
+        reflects brand voice (spot-check); remove yaml → skill still
+        succeeds with empty brand section
+  - [ ] Kill `adaria-ai daemon` mid-flow (state = ASK_IDENTIFIER),
+        `launchctl kickstart -k gui/$UID/com.adaria-ai.daemon`, send
+        next message → flow resumes at persisted state
+  - [ ] Stale flow cleanup — leave a flow idle past
+        `safety.approvalTimeoutMinutes` (default 30); next message in
+        the same thread must start a fresh `ASK_TYPE` turn
 
 **Exit criteria verification:**
-- [ ] Full Sunday weekly run on adaria-ai produces briefing indistinguishable from growth-agent's, or every difference is documented
+- [ ] doctor green
+- [ ] one approval loop manually exercised end-to-end
+- [ ] brand flow demonstrated for at least one service type
 
-## M8 — Cutover (~0.5 day)
+## M8 — Go live (~0.5 day)
 
-**Goal:** adaria-ai is the only live daemon.
+**Goal:** adaria-ai posts its first real Sunday briefing to the
+production Slack channel.
 
-- [ ] Stop growth-agent daemon: `./bin/daemon-ctl.sh stop`
-- [ ] Unload growth-agent launchd plist: `launchctl unload ...`
-- [ ] Remove `ADARIA_DRY_RUN=1` from adaria-ai plist
-- [ ] Switch adaria-ai Slack channel from DM back to `#growth`
+- [ ] `~/.adaria/config.yaml` → switch `slack.briefingChannel` from
+      DM back to the production channel (e.g. `#growth`)
 - [ ] `adaria-ai stop && adaria-ai start` to pick up config change
-- [ ] Post cutover announcement in `#growth`
-- [ ] Monitor first live weekly run on adaria-ai
-- [ ] Tag `growth-agent v1-final`
-- [ ] Update growth-agent README with pointer to adaria-ai
-- [ ] Commit to growth-agent: `chore: archive repo, see adaria-ai`
-- [ ] Archive growth-agent repo on GitHub
-
-### Rollback path (if Monday briefing fails)
-
-- [ ] `adaria-ai stop`
-- [ ] `launchctl load <growth-agent.plist>`
-- [ ] `./bin/daemon-ctl.sh start` on growth-agent
-- [ ] Investigate, fix, retry — no data lost
+- [ ] Sit through the first live Sunday weekly run; tail
+      `~/.adaria/logs/weekly.out.log` in real time
+- [ ] If anything misbehaves, switch `briefingChannel` back to DM,
+      reload, fix, redeploy
 
 **Exit criteria verification:**
-- [ ] Monday morning Slack briefing comes from adaria-ai
-- [ ] growth-agent daemon not running
+- [ ] Monday morning briefing visible in the production channel
+- [ ] No operator intervention needed during the run
 - [ ] `launchctl list | grep adaria-ai` shows 3 jobs loaded
 
 ## M9 — npm publish (~0.5 day)
@@ -542,7 +508,7 @@ Full tick list in `docs/brand-profile/CHECKLIST.md`. Summary below.
 - [x] Every collector has a unit test (M2) — 8/8 collectors, 76 dedicated tests across 8 files
 - [x] Every skill has a unit test (M4, M5) — 7/7 skills: aso 15, review 6, onboarding 5, seo-blog 7, short-form 3, sdk-request 4, content 3 = 43 skill tests total
 - [x] SocialPublishSkill has unit tests (M6.5) — 6 tests
-- [x] Every social platform client has a unit test with DRY_RUN verification (M6.5) — 6 clients, 23 tests
+- [x] Every social platform client has a unit test (M6.5) — 6 clients, validation + flow tests
 - [x] Every MCP tool has a unit test with whitelist rejection case (M5.5) — db-query 9, collector-fetch 4, skill-result 3, app-info 4 = 20 tool tests
 - [x] `prompt-guard.ts` has injection test cases covering Fridgify recipe + Mode B tool descriptions — 12 tests in prompt-injection.test.ts + 7 tests for sanitizeExternalText
 - [x] DB migration smoke test runs in CI (M3) — `tests/db/schema.test.ts` (15 tests) + `tests/db/queries.test.ts` (26 tests), 41 total
@@ -564,7 +530,7 @@ Full tick list in `docs/brand-profile/CHECKLIST.md`. Summary below.
 - [x] No secrets in npm tarball (M9 `tar -tzf` inspection) — `check:tarball-secrets` runs in `prepublishOnly`, scans 7 credential patterns (Slack/Anthropic/Google/OpenAI/GitHub/PEM), blocks publish on match. Also `src/` removed from `files` field (dist-only tarball, 195 files).
 - [x] Social platform tokens stored in Keychain, not config files (M6.5) — 11 KEYCHAIN_KEYS + store.ts resolution
 - [x] `social_publish` approval gate added to safety.ts (M6.5)
-- [x] `ADARIA_DRY_RUN=1` respected by all 6 social platform clients — post() + deletePost() (M6.5)
+- [x] Social platform `post()` / `deletePost()` writes routed only via approval gate — no second-line dry-run flag (removed in M7-cleanup)
 - [ ] Audit log captures every Claude invocation, skill dispatch, approval action
 
 ### CI / automation (post-M9, not blocking)
@@ -579,7 +545,7 @@ Full tick list in `docs/brand-profile/CHECKLIST.md`. Summary below.
 - [ ] `adaria-ai doctor` is the single source of truth for "is the system healthy"
 - [ ] Every error path logs to `~/.adaria/logs/` with enough context to debug from the log alone
 - [ ] Rollback path from M8 is documented in `docs/SETUP.md`
-- [x] `ADARIA_HOME` override documented for parallel run + testing — README "Profiles and safety" section covers prod/dev profile, keychain namespace derivation, `init:dev`/`smoke:collectors:dev` scripts
+- [x] `ADARIA_HOME` override documented for prod/dev profile separation — README "Profiles and safety" section covers keychain namespace derivation and `init:dev` / `smoke:collectors:dev` scripts
 
 ---
 
@@ -593,11 +559,11 @@ Full tick list in `docs/brand-profile/CHECKLIST.md`. Summary below.
 | M3 DB + config | 0.5 | 🟨 | 2026-04-12 | — (schema + queries + tests landed; exit criteria `doctor` DB check deferred to M4 wiring) |
 | M4 ASO skill | 1.5 | 🟨 | 2026-04-12 | — (all code items done; circuit breaker, Block Kit, snapshot script landed; manual Slack verify pending) |
 | M5 Remaining skills | 2.0 | 🟨 | 2026-04-12 | — (6 skills + approval wiring + Block Kit buttons landed; manual approve/reject verify pending) |
-| M5.5 Mode B tools | 0.5 | 🟨 | 2026-04-12 | — (4 tools + prompt-injection tests landed; integration test deferred to M7 parallel) |
+| M5.5 Mode B tools | 0.5 | 🟨 | 2026-04-12 | — (4 tools + prompt-injection tests landed; integration test deferred to M7 smoke) |
 | M6 Orchestrators | 1.0 | 🟨 | 2026-04-12 | — (code + Block Kit briefing + tests landed; pending manual verify: Slack briefing + launchctl) |
 | M6.5 Social publishing | 3.0 | 🟨 | 2026-04-12 | — (6 clients + skill + smoke script + all tests landed; manual platform verify pending) |
-| M6.7 Brand profile | 2.0 | 🟨 | 2026-04-15 | — (all 6 phases landed; manual Slack flow E2E folded into M7 parallel run) |
-| M7 Parity + parallel | 1.0 | 🟨 | 2026-04-12 | — (all code items done: approval wiring, doctor auth, 4 docs, snapshot script; parallel run execution pending) |
-| M8 Cutover | 0.5 | ⬜ | — | — |
+| M6.7 Brand profile | 2.0 | 🟨 | 2026-04-15 | — (all 6 phases landed; manual Slack flow E2E folded into M7 pre-launch smoke) |
+| M7 Pre-launch smoke | 0.5 | 🟨 | 2026-04-12 | — (code + docs complete; manual smoke run pending) |
+| M8 Go live | 0.5 | ⬜ | — | — |
 | M9 npm publish | 0.5 | ⬜ | — | — |
 | **Total** | **~15** | | | |

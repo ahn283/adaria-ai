@@ -172,12 +172,12 @@ export class BrandSkill implements Skill {
 
     try {
       const result = await this.invokeGenerator(ctx, serviceType, data);
-      const summary = formatPreview(result.profile, result.dryRun);
+      const summary = formatPreview(result.profile);
       const nextData: BrandFlowData & { _yamlPath?: string } = {
         ...data,
         serviceId,
+        _yamlPath: result.yamlPath,
       };
-      if (!result.dryRun) nextData._yamlPath = result.yamlPath;
       return this.buildResult(ctx, flowId, metadata, {
         state: "PREVIEW",
         data: nextData,
@@ -422,10 +422,9 @@ async function removeExistingImages(
   }
 }
 
-function formatPreview(profile: BrandProfile, dryRun: boolean): string {
-  const tag = dryRun ? "[DRY_RUN] " : "";
+function formatPreview(profile: BrandProfile): string {
   const lines = [
-    `${tag}*브랜드 프로필 미리보기* (\`${profile._meta.serviceType}\`)`,
+    `*브랜드 프로필 미리보기* (\`${profile._meta.serviceType}\`)`,
     "",
     `• Tagline: ${profile.identity.tagline || "_(비어있음)_"}`,
     `• Positioning: ${profile.identity.positioning || "_(비어있음)_"}`,

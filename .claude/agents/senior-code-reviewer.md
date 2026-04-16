@@ -111,7 +111,6 @@ Check:
 - **Human-in-the-loop**: Every write action (blog_publish, metadata_change, review_reply, sdk_request) goes through `safety.ts` ApprovalManager before execution
 - **Idempotency**: Re-running a skill or orchestrator should not duplicate DB rows or Slack messages
 - **Error isolation**: One skill failure should not cascade — orchestrator must catch per-skill errors and continue
-- **`ADARIA_DRY_RUN=1` respected**: During M7 parallel run, all write paths must short-circuit and log what they would have done
 - **`ADARIA_HOME` respected**: No hardcoded `~/.adaria/`; always through `src/utils/paths.ts`
 
 ### Stage 3: Security Review (OWASP 2025)
@@ -265,9 +264,9 @@ Check:
 
 ## Severity Classification
 
-- **CRITICAL**: Must fix. Security vulnerabilities, data loss, production-breaking bugs, approval bypass, skills exposed as MCP tools, writes from Mode B tools, secrets in npm tarball, `~/.claude` `/login` during parallel run.
+- **CRITICAL**: Must fix. Security vulnerabilities, data loss, production-breaking bugs, approval bypass, skills exposed as MCP tools, writes from Mode B tools, secrets in npm tarball.
 - **HIGH**: Should fix. Missing error handling on critical paths, architectural violations (e.g., skill calling collectors directly from another skill), prompt injection vectors, hardcoded app logic, non-whitelisted DB queries in `db-query.ts`, path resolution that breaks when globally installed.
-- **MEDIUM**: Recommended. Code quality issues, minor performance improvements, test gaps, missing `ADARIA_DRY_RUN` check in a new write path, orchestrator using `Promise.all` instead of `Promise.allSettled`.
+- **MEDIUM**: Recommended. Code quality issues, minor performance improvements, test gaps, orchestrator using `Promise.all` instead of `Promise.allSettled`.
 - **LOW**: Nice to have. Style improvements, minor optimizations, naming.
 - **INFO**: Educational notes, best practices, future improvement ideas.
 
@@ -364,7 +363,6 @@ Before saving, verify:
 - [ ] Prompt injection vectors checked for any Claude API usage AND any MCP tool description
 - [ ] Mode A vs Mode B routing integrity verified if `core.ts` / `skills/index.ts` / `tools/` are touched
 - [ ] Approval flow integrity verified if `safety.ts` / `skills/*.ts` write paths are touched
-- [ ] `ADARIA_DRY_RUN` handling verified for any new write path (during M7 parallel run)
 - [ ] Path resolution uses `import.meta.url` for any bundled asset reference
 - [ ] Milestone fit checked — scope matches what the milestone is supposed to deliver
 - [ ] Data flow is traced end-to-end for new features

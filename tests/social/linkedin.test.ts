@@ -1,4 +1,5 @@
-import { describe, it, expect, afterEach } from "vitest";
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-base-to-string */
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { LinkedInClient } from "../../src/social/linkedin.js";
 
 const config = {
@@ -7,16 +8,6 @@ const config = {
 };
 
 describe("LinkedInClient", () => {
-  const originalEnv = process.env["ADARIA_DRY_RUN"];
-
-  afterEach(() => {
-    if (originalEnv !== undefined) {
-      process.env["ADARIA_DRY_RUN"] = originalEnv;
-    } else {
-      delete process.env["ADARIA_DRY_RUN"];
-    }
-  });
-
   it("validates 3000 char limit", () => {
     const client = new LinkedInClient(config);
     const result = client.validateContent("A professional post");
@@ -47,11 +38,53 @@ describe("LinkedInClient", () => {
     expect(result.suggestions.some((s) => s.includes("3-5"))).toBe(true);
   });
 
-  it("returns dry-run result when ADARIA_DRY_RUN=1", async () => {
-    process.env["ADARIA_DRY_RUN"] = "1";
-    const client = new LinkedInClient(config);
-    const result = await client.post({ text: "Professional update" });
-    expect(result.success).toBe(true);
-    expect(result.dryRun).toBe(true);
+  describe("post()", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("POSTs to /rest/posts with org URN, version header, and body commentary", async () => {
+      const fetchMock = vi.fn().mockResolvedValue(
+        new Response(null, {
+          status: 201,
+          headers: { "x-linkedin-id": "urn:li:share:42" },
+        }),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+
+      const client = new LinkedInClient(config);
+      const result = await client.post({ text: "Professional update" });
+
+      expect(result.success).toBe(true);
+      expect(result.postId).toBe("urn:li:share:42");
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const [url, init] = fetchMock.mock.calls[0]!;
+      expect(String(url)).toBe("https://api.linkedin.com/rest/posts");
+      expect((init as RequestInit).method).toBe("POST");
+      const headers = (init as RequestInit).headers as Record<string, string>;
+      expect(headers["Authorization"]).toBe("Bearer test-token");
+      expect(headers["LinkedIn-Version"]).toMatch(/^\d{6}$/);
+      expect(headers["X-Restli-Protocol-Version"]).toBe("2.0.0");
+      const body = JSON.parse(String((init as RequestInit).body)) as {
+        author: string;
+        commentary: string;
+      };
+      expect(body.author).toBe("urn:li:organization:12345");
+      expect(body.commentary).toContain("Professional update");
+    });
+
+    it("returns failure result when API responds non-2xx", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response("forbidden", { status: 403 }),
+        ),
+      );
+      const client = new LinkedInClient(config);
+      const result = await client.post({ text: "Hi" });
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("403");
+    });
   });
 });

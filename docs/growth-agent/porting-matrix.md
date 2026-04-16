@@ -139,7 +139,7 @@ brand profile subsystem. Plan in `docs/brand-profile/PRD.md`.
 | `src/brands/loader.ts` | `loadBrandProfile`, `formatBrandContext`, `loadBrandImages` (rejects symlinks) | Phase 1 |
 | `src/brands/fetchers/web.ts` | HTML + meta + OG + CSS-var fetcher; undici `Agent` pins resolved IP to close SSRF TOCTOU | Phase 2 |
 | `src/brands/fetchers/package.ts` | npm + GitHub README (unauth); 403/429 → `RateLimitError` | Phase 2 |
-| `src/brands/generator.ts` | Type dispatch → collect → sanitise → Claude → YAML; `ADARIA_DRY_RUN=1` short-circuit | Phase 2 |
+| `src/brands/generator.ts` | Type dispatch → collect → sanitise → Claude → YAML; PREVIEW gate handles cancel/orphan cleanup | Phase 2 |
 | `prompts/brand-generate.md` | Shared Claude analysis prompt for all 3 service types | Phase 2 |
 | `src/db/schema.ts` migration v7 | `brand_flows` table (`flow_id` PK, `UNIQUE(user_id, thread_key)`) | Phase 3 |
 | `src/db/queries.ts` — brand flow helpers | `upsertBrandFlow`, `getActiveBrandFlow`, `deleteBrandFlow`, `deleteStaleBrandFlows` | Phase 3 |

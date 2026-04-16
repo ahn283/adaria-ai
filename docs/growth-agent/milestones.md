@@ -185,7 +185,6 @@ same API patterns. Threads, TikTok, YouTube Community are new.
 - Write `src/social/base.ts` — shared `SocialClient` interface:
   `post(content) → SocialPostResult`, `validateContent(text) → ValidationResult`,
   `uploadMedia(url) → mediaId`, `deletePost(id)`. All clients implement this.
-  Every `post()` method checks `ADARIA_DRY_RUN` before calling the API.
 - Write `src/social/twitter.ts` — Twitter API v2 (create tweet) + v1.1
   (media upload). Port from linkgo's `twitter_client.py` (uses `tweepy`
   equivalent). 280-char validation. OAuth 1.0a headers.
@@ -234,23 +233,20 @@ same API patterns. Threads, TikTok, YouTube Community are new.
 ### Phase 3: Tests (~0.5 day)
 
 - Write `tests/social/twitter.test.ts` — mock HTTP, char validation,
-  DRY_RUN behaviour, media upload flow.
+  media upload flow.
 - Write `tests/social/facebook.test.ts` — appsecret_proof, page token.
 - Write `tests/social/threads.test.ts` — container create → publish flow.
 - Write `tests/social/tiktok.test.ts` — OAuth flow, video requirement.
 - Write `tests/social/youtube.test.ts` — community post creation.
 - Write `tests/social/linkedin.test.ts` — 3-step image upload, org post.
 - Write `tests/skills/social-publish.test.ts` — dispatch, approval items,
-  DRY_RUN, per-platform enable/disable, content generation mock.
-- Write `scripts/smoke-social.ts` — manual smoke test posting to each
-  platform (uses real credentials from dev profile).
+  per-platform enable/disable, content generation mock.
 
 **Exit criteria:**
 - `@adaria-ai social fridgify` generates content for all enabled platforms
   and presents approval buttons in Slack.
 - Approve → post appears on the target platform (verified for at least
   Twitter + one other platform).
-- `ADARIA_DRY_RUN=1` logs the payload without posting.
 - `social_posts` table records every successful post.
 
 ## M6.7 — Brand profile (~2 days)
@@ -287,9 +283,8 @@ resolution, private-range reject, pin vetted IP into an undici
 for npm + GitHub README (unauth, 60 req/hr — 403/429 surface as
 `RateLimitError`). `src/brands/generator.ts` dispatches on serviceType,
 sanitises every external field via `sanitizeExternalText`, runs Claude
-with `prompts/brand-generate.md`, writes YAML. Respects
-`ADARIA_DRY_RUN=1`. Throws `ConfigError` when an `app`-type generate
-has no data from any store.
+with `prompts/brand-generate.md`, writes YAML. Throws `ConfigError`
+when an `app`-type generate has no data from any store.
 
 ### Phase 3 — Flow state persistence
 
@@ -339,41 +334,47 @@ injection for `content.ts` / `sdk-request.ts` (they don't call
   output unchanged structurally with an empty brand section.
 - Daemon restart mid-flow → user's next message resumes from the
   persisted state (`brand_flows` is durable).
-- `ADARIA_DRY_RUN=1` brand flow logs but writes no `brand.yaml` or
-  images.
-- `npm run build && npm run lint && npm test` green (pre-existing
-  `tests/db/queries.test.ts` failures are out of scope).
+- `npm run build && npm run lint && npm test` green.
 
-## M7 — Parity + cutover prep (~1 day)
+## M7 — Pre-launch smoke (~0.5 day)
 
-**Goal:** adaria-ai matches growth-agent's current capability. Cut over is safe.
+**Goal:** Verify adaria-ai is wired correctly before the first live weekly
+briefing. growth-agent is not in active use, so there is no parity
+comparison — this milestone is just smoke + readiness, not a parallel
+run.
 
-- Run adaria-ai + growth-agent side-by-side for a week (adaria on a different
-  Slack channel or with a DM-only allowlist, so briefings don't collide)
-- Compare the Sunday briefings — every section should match within tolerance
-- Verify approval buttons work end-to-end (blog publish, review reply)
-- Port `doctor.ts` to cover the growth-marketing checks (App Store creds,
-  Google Play, ASOMobile, SDK, Eodin Blog token, GA4, Search Console)
-- Document `SETUP.md` + `ARCHITECTURE.md`
-- Fix any regression delta discovered in the parallel run
+- `adaria-ai doctor` — every check green (or every red explained)
+- Manual brand flow E2E in a DM thread for one `app`, one `web`, and one
+  `package` service (per `docs/brand-profile/PRD.md` §8)
+- Verify approval buttons work end-to-end in DM:
+  blog publish → log/cancel; review reply → log/cancel; metadata change →
+  log/cancel. Take a screenshot of one approve cycle for the audit log.
+- Trigger `adaria-ai analyze` once with a test app and confirm the
+  briefing renders correctly (no Slack post needed if `briefingChannel`
+  points to your DM).
+- Fix any regression discovered. No deadline pressure — the goal is
+  "I trust the next live Sunday run", not "feature parity with X".
 
-**Exit criteria:** a full Sunday weekly run on adaria-ai produces a briefing
-indistinguishable from growth-agent's — or we know exactly what's different
-and why.
+**Exit criteria:** doctor green, brand flow demonstrated, one approval
+loop manually exercised end-to-end.
 
-## M8 — Cutover (~0.5 day)
+## M8 — Go live (~0.5 day)
 
-**Goal:** adaria-ai is the only live daemon.
+**Goal:** adaria-ai posts its first real Sunday briefing to the production
+Slack channel.
 
-- Stop growth-agent daemon via `./bin/daemon-ctl.sh stop`
-- Unload its launchd plist
-- Archive growth-agent repo (tag `v1-final`, README pointer to adaria-ai)
-- Announce cutover in Slack
-- Monitor first live weekly run on adaria-ai
-- On success: commit the cutover to growth-agent as a `chore: archive repo` commit
+- `~/.adaria/config.yaml` → `slack.briefingChannel`: switch from DM
+  back to the production channel (e.g. `#growth`)
+- `adaria-ai stop && adaria-ai start` to pick up the config change
+- Sit through the first live Sunday weekly run; watch logs in real time
+  via `adaria-ai logs`
+- Address any issue surfaced by the live run; commit fix; redeploy
 
-**Exit criteria:** Monday morning Slack briefing comes from adaria-ai. No
-more activity on growth-agent.
+**Rollback:** if the live run misbehaves, switch `briefingChannel` back
+to your DM and reload — no external state to revert.
+
+**Exit criteria:** Monday morning briefing visible in the production
+channel; no operator intervention needed during the run.
 
 ## M9 — npm publish (~0.5 day)
 
@@ -408,13 +409,13 @@ beyond `adaria-ai init`.
 
 ---
 
-## Estimated total: ~13 focused developer days
+## Estimated total: ~14 focused developer days
 
 Not counting:
 - Calendar slippage (expect ~2x)
 - Adaria.ai brand work if adaria-new changes anything
 - Phase 2 features from `docs/pilot-ai-alignment/improvements.md` (streaming,
-  session UX polish, agent metrics feedback loop) — those are post-cutover
+  session UX polish, agent metrics feedback loop) — those are post-launch
 
 ## Risk register
 
@@ -424,13 +425,10 @@ Not counting:
 | Skill interface doesn't cleanly fit all 7 existing agents | Medium | Days | Start with ASO as the proof; if any of the 7 needs a different shape, adjust interface before porting others |
 | SQLite port reveals schema drift between DB file and code | Low | Hours | Start fresh DB, don't migrate data |
 | Slack app scope review (if we use a new Slack App) takes days | Low | Days | Reuse existing Growth Agent app, just rename in install |
-| launchd plist conflicts between old and new daemons | Low | Hours | Use distinct plist labels, document in M7 |
 | Fridgify recipe prompt injection defense needs re-validation in TypeScript | Medium | Hours | Carry over the escaping + test cases from `commands/error-hints.test.js` + the sanitization unit tests |
 | `claude` CLI keychain behaviour differs on the new plist | Medium | Hours | Day 1 smoke test: `adaria-ai doctor` must pass `claude -p` probe before any skill work |
-| M7 parallel run doubles external API load (App Store Connect, ASOMobile, GA4, Search Console) and risks rate limit / duplicate writes | Medium | Hours–Days | adaria-ai runs in read-only mode during parallel week via `ADARIA_DRY_RUN=1`; write paths (blog publish, review reply) stay gated off; collectors read from shared DB where possible |
-| Two daemons sharing `~/.claude` auth state — one side runs `/login` and invalidates the other | Low | Hours | Document in M7 runbook: no `/login` during parallel week. `adaria-ai doctor` warns if claude auth was touched within last 24h |
 | Mode B MCP tool enables Claude to leak raw review text / PII to Slack when it should summarise | Medium | Hours | M5.5 tool descriptions explicitly forbid pass-through of row data; `db-query.ts` truncates + flags sensitive columns; prompt-guard test case |
 | npm package path resolution breaks when installed globally (cwd vs `__dirname`) | Medium | Hours | M9 smoke test on a second Mac is mandatory, not optional. `paths.ts` is the single source of truth for any bundled asset path |
-| Social platform API rate limits or token expiry during weekly run | Medium | Hours | Per-platform rate limiter in each client; token refresh logic ported from linkgo; `DRY_RUN` skips API calls |
+| Social platform API rate limits or token expiry during weekly run | Medium | Hours | Per-platform rate limiter in each client; token refresh logic ported from linkgo |
 | TikTok Content Posting API requires app review before production access | High | Days–Weeks | Implement client anyway; gate behind `apps.yaml` feature flag; other 5 platforms ship independently |
 | Social token refresh fails silently, posts start failing | Medium | Hours | `doctor.ts` checks social token validity; each client logs refresh attempts to audit log; Slack alert on repeated failure |

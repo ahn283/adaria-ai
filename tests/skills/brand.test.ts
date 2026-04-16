@@ -12,7 +12,6 @@ import type { SkillContext } from "../../src/types/skill.js";
 
 let tempHome: string;
 const originalHome = process.env["ADARIA_HOME"];
-const originalDryRun = process.env["ADARIA_DRY_RUN"];
 
 function mockConfig(): SkillContext["config"] {
   // Only the fields the skill reads need to be present; cast through
@@ -37,15 +36,12 @@ function mkCtx(
 beforeEach(async () => {
   tempHome = await fs.mkdtemp(path.join(os.tmpdir(), "adaria-brand-skill-"));
   process.env["ADARIA_HOME"] = tempHome;
-  delete process.env["ADARIA_DRY_RUN"];
 });
 
 afterEach(async () => {
   await fs.rm(tempHome, { recursive: true, force: true });
   if (originalHome === undefined) delete process.env["ADARIA_HOME"];
   else process.env["ADARIA_HOME"] = originalHome;
-  if (originalDryRun === undefined) delete process.env["ADARIA_DRY_RUN"];
-  else process.env["ADARIA_DRY_RUN"] = originalDryRun;
 });
 
 function tmpDbPath(): string {
@@ -127,7 +123,6 @@ describe("BrandSkill.continueFlow", () => {
         goals: { currentQuarter: "", keyMetrics: [] },
       },
       yamlPath: path.join(tempHome, "brands", "eodin-app", "brand.yaml"),
-      dryRun: false,
     }));
     const skill = new BrandSkill({ runGenerate });
     const ctx = mkCtx(db);

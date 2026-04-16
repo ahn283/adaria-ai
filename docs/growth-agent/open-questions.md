@@ -213,5 +213,5 @@ Status: ✅ all four sub-decisions resolved. 10a/10b confirmed 2026-04-12,
 11. Distribution: same as pilot-ai — `npm install -g adaria-ai` + `adaria-ai
     init`. No brew, no installer script, no Docker.
 12. Runtime root: `~/.adaria/` (config, sessions, audit, SQLite, logs).
-    Override via `ADARIA_HOME` env var — used by M7 parallel run to keep
-    growth-agent and adaria-ai state fully isolated.
+    Override via `ADARIA_HOME` env var — used by tests and the dev profile
+    to keep prod and dev state isolated.

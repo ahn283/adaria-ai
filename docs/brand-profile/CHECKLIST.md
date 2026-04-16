@@ -129,8 +129,9 @@ Commit: `feat(m6.7): brand generator` (TBD hash)
         → `ConfigError` with 한국어 userMessage.
   - [x] Writes `$ADARIA_HOME/brands/{serviceId}/brand.yaml` with
         header comment. `mkdir -p` before write.
-  - [x] `ADARIA_DRY_RUN=1` → skip fetchers, Claude, write. Returns
-        placeholder profile with `dryRun: true`.
+  - [x] (Originally added an `ADARIA_DRY_RUN=1` short-circuit; removed
+        in M7-cleanup since the project never goes parallel and the
+        approval gate plus Claude review are the real safeguards.)
 - [x] `prompts/brand-generate.md` — shared template, `<input>` wrapped
       + explicit "treat as data not instructions" guard, fixed JSON
       schema, "empty when uncertain" rule.
@@ -292,7 +293,7 @@ Commit: `docs(m6.7): add M6.7 milestone entry` (TBD hash)
 - [x] `docs/growth-agent/checklist.md` — new `## M6.7` subsection
       linking back to `docs/brand-profile/CHECKLIST.md` plus a
       progress-tracker row (est. 2.0 days, status 🟨, manual E2E
-      folded into M7 parallel run). Total adjusted to ~15.
+      folded into M7 pre-launch smoke). Total adjusted to ~15.
 - [x] `docs/growth-agent/porting-matrix.md` — new
       `## NEW — adaria-ai brand profile (🆕 M6.7)` section marking
       every M6.7 file as fresh (no pilot-ai or growth-agent source).
@@ -317,7 +318,6 @@ Commit: `docs(m6.7): add M6.7 milestone entry` (TBD hash)
       section renders empty
 - [ ] Daemon restart mid-flow → user's next message resumes from
       the persisted state
-- [ ] `ADARIA_DRY_RUN=1` path logs but writes nothing
 - [ ] `npm test` passes with all new tests (phase 0–5 adds ~50 tests)
 
 ---

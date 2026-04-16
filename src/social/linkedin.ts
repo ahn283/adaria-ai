@@ -10,8 +10,6 @@ import {
   type SocialPostContent,
   type SocialPostResult,
   type ValidationResult,
-  isDryRun,
-  dryRunResult,
 } from "./base.js";
 import * as logger from "../utils/logger.js";
 
@@ -30,11 +28,6 @@ export class LinkedInClient implements SocialClient {
   constructor(private readonly config: LinkedInConfig) {}
 
   async post(content: SocialPostContent): Promise<SocialPostResult> {
-    if (isDryRun()) {
-      logger.info(`[linkedin] DRY_RUN: would post: ${content.text.slice(0, 100)}`);
-      return dryRunResult("linkedin", content);
-    }
-
     const text = this.buildText(content);
     const validation = this.validateContent(text);
     if (!validation.valid) {
@@ -136,10 +129,6 @@ export class LinkedInClient implements SocialClient {
   }
 
   async deletePost(postId: string): Promise<boolean> {
-    if (isDryRun()) {
-      logger.info(`[linkedin] DRY_RUN: would delete post ${postId}`);
-      return true;
-    }
     try {
       const response = await fetch(`${REST_URL}/posts/${postId}`, {
         method: "DELETE",

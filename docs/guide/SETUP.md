@@ -73,7 +73,7 @@ adaria-ai stop   # unloads all 3 launchd plists
 
 ## Development profiles
 
-For side-by-side testing (e.g., M7 parallel run):
+For trying changes without touching the production state:
 
 ```bash
 # Dev profile uses ~/.adaria-dev and a separate keychain namespace
@@ -82,7 +82,6 @@ npm run init:dev              # shortcut
 
 # Smoke tests
 npm run smoke:collectors:dev  # test collectors with dev credentials
-npm run smoke:social:dev      # test social clients (dry-run)
 ```
 
 ## Manual cron trigger
@@ -107,7 +106,7 @@ Check `~/.adaria/logs/daemon.err.log` for crash details.
 claude /login
 ```
 
-**Warning during M7 parallel run:** Do NOT re-run `/login` — both daemons share `~/.claude` auth state.
+**Note:** `claude /login` invalidates the current Claude session — the running daemon will need to re-authenticate on its next skill invocation. `adaria-ai doctor` warns when `~/.claude` was touched in the last 24h.
 
 ### Collector errors
 

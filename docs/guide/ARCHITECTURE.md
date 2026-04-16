@@ -112,4 +112,4 @@ All runtime state lives in `~/.adaria/` (configurable via `ADARIA_HOME`).
 - **One-time fork from pilot-ai.** No upstream sync routine.
 - **SQLite via better-sqlite3.** Prepared statements only, no string interpolation.
 - **Config-driven thresholds.** Numbers live in `config.yaml`, not code.
-- **`ADARIA_DRY_RUN=1`** disables all write paths (M7 parallel run safety).
+- **Approval gate is the only write barrier.** No `ADARIA_DRY_RUN` flag — every external-side-effecting skill (blog publish, metadata change, review reply, social post) goes through `ApprovalManager` and waits for an allowlisted human click before firing.

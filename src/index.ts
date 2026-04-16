@@ -74,13 +74,9 @@ program
 program
   .command("start")
   .description("Load the adaria-ai daemon into launchd")
-  .option(
-    "--dry-run",
-    "Inject ADARIA_DRY_RUN=1 into all 3 plists. Use during M7 parallel run so write paths short-circuit. `adaria-ai start` (no flag) clears it.",
-  )
-  .action(async (opts: { dryRun?: boolean }) => {
+  .action(async () => {
     const { runStart } = await import("./cli/start.js");
-    await runStart({ dryRun: opts.dryRun ?? false });
+    await runStart();
   });
 
 program

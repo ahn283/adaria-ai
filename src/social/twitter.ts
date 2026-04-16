@@ -12,8 +12,6 @@ import {
   type SocialPostContent,
   type SocialPostResult,
   type ValidationResult,
-  isDryRun,
-  dryRunResult,
 } from "./base.js";
 import * as logger from "../utils/logger.js";
 
@@ -34,11 +32,6 @@ export class TwitterClient implements SocialClient {
   constructor(private readonly config: TwitterConfig) {}
 
   async post(content: SocialPostContent): Promise<SocialPostResult> {
-    if (isDryRun()) {
-      logger.info(`[twitter] DRY_RUN: would post: ${content.text.slice(0, 100)}`);
-      return dryRunResult("twitter", content);
-    }
-
     const text = this.buildText(content);
     const validation = this.validateContent(text);
     if (!validation.valid) {
@@ -104,10 +97,6 @@ export class TwitterClient implements SocialClient {
   }
 
   async deletePost(postId: string): Promise<boolean> {
-    if (isDryRun()) {
-      logger.info(`[twitter] DRY_RUN: would delete post ${postId}`);
-      return true;
-    }
     try {
       await this.v2Request("DELETE", `/tweets/${postId}`);
       return true;

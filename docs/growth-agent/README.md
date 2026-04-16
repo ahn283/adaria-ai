@@ -42,8 +42,8 @@ The new project:
 | 2 | Name: `adaria-ai` (aligns with Adaria.ai brand) | ✅ confirmed |
 | 3 | TypeScript (pilot-ai is TS; the bones stay typed) | ✅ confirmed 2026-04-12 |
 | 4 | Cron scheme: separate launchd jobs (daemon + weekly + monitor), not in-process scheduler | ✅ confirmed 2026-04-12 |
-| 5 | `growth-agent` Phase 1: commit now, then freeze as dogfood — no further commits except critical Slack-down fixes until M8 archive | ✅ confirmed 2026-04-12 |
-| 6 | Migration strategy: parallel run during M7 with `ADARIA_DRY_RUN=1` (write paths off, Slack on DM channel), cutover at M8 with 1-minute launchctl rollback path | ✅ confirmed 2026-04-12 |
+| 5 | `growth-agent` Phase 1: not in active use — adaria-ai goes live directly, no parallel run, no archive ceremony required (revised 2026-04-16) | ✅ revised 2026-04-16 |
+| 6 | Migration strategy: M7 is a pre-launch smoke (doctor + brand E2E + one approval loop in DM); M8 flips `briefingChannel` to production. No `ADARIA_DRY_RUN` flag — approval gate is the only write barrier (revised 2026-04-16) | ✅ revised 2026-04-16 |
 | 7 | Distribution: npm package — unscoped `adaria-ai`, public registry (name availability verified 2026-04-12) | ✅ confirmed |
 | 8 | MCP framework: keep from pilot-ai, drop only personal-agent tool implementations, add marketing read-only tools in M5.5 | ✅ confirmed |
 | 9 | Fork relationship: one-time copy from pilot-ai, then independent evolution — no upstream backport routine | ✅ confirmed |

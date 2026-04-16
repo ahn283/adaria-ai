@@ -12,7 +12,6 @@ import { ConfigError } from "../../src/utils/errors.js";
 let tempHome: string;
 let promptsDir: string;
 const originalHome = process.env["ADARIA_HOME"];
-const originalDryRun = process.env["ADARIA_DRY_RUN"];
 
 const PROMPT = `type={{serviceType}}\nid={{serviceId}}\n<input>\n{{inputBlock}}\n</input>\n`;
 
@@ -22,15 +21,12 @@ beforeEach(async () => {
   await fs.mkdir(promptsDir, { recursive: true });
   await fs.writeFile(path.join(promptsDir, "brand-generate.md"), PROMPT);
   process.env["ADARIA_HOME"] = tempHome;
-  delete process.env["ADARIA_DRY_RUN"];
 });
 
 afterEach(async () => {
   await fs.rm(tempHome, { recursive: true, force: true });
   if (originalHome === undefined) delete process.env["ADARIA_HOME"];
   else process.env["ADARIA_HOME"] = originalHome;
-  if (originalDryRun === undefined) delete process.env["ADARIA_DRY_RUN"];
-  else process.env["ADARIA_DRY_RUN"] = originalDryRun;
 });
 
 const validResponse = JSON.stringify({
@@ -200,21 +196,7 @@ describe("generateBrandProfile — package type", () => {
   });
 });
 
-describe("generateBrandProfile — dry-run + errors", () => {
-  it("writes nothing and returns placeholder when ADARIA_DRY_RUN=1", async () => {
-    process.env["ADARIA_DRY_RUN"] = "1";
-    const runClaude = vi.fn(async () => validResponse);
-    const appStore = { fetch: vi.fn() };
-    const result = await generateBrandProfile(
-      { serviceId: "fridgify", serviceType: "app", appStoreId: "123" },
-      { runClaude, appStore, promptsDir }
-    );
-    expect(result.dryRun).toBe(true);
-    expect(runClaude).not.toHaveBeenCalled();
-    expect(appStore.fetch).not.toHaveBeenCalled();
-    await expect(fs.access(result.yamlPath)).rejects.toThrow();
-  });
-
+describe("generateBrandProfile — errors + defaults", () => {
   it("throws ConfigError when Claude JSON is invalid", async () => {
     const runClaude = vi.fn(async () => "not json at all");
     const appStore = {

@@ -10,8 +10,6 @@ import {
   type SocialPostContent,
   type SocialPostResult,
   type ValidationResult,
-  isDryRun,
-  dryRunResult,
 } from "./base.js";
 import * as logger from "../utils/logger.js";
 
@@ -28,11 +26,6 @@ export class YouTubeClient implements SocialClient {
   constructor(private readonly config: YouTubeConfig) {}
 
   async post(content: SocialPostContent): Promise<SocialPostResult> {
-    if (isDryRun()) {
-      logger.info(`[youtube] DRY_RUN: would post: ${content.text.slice(0, 100)}`);
-      return dryRunResult("youtube", content);
-    }
-
     const text = this.buildText(content);
     const validation = this.validateContent(text);
     if (!validation.valid) {

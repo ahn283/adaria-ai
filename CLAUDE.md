@@ -98,7 +98,7 @@ must respect:
 
 ### Social publishing (M6.5)
 
-`SocialPublishSkill` generates platform-optimised marketing content via Claude and posts to 6 platforms. Platform clients live in `src/social/` (TypeScript, ported from `~/Github/linkgo/ai-service/src/social/` Python patterns). Each client implements a shared `SocialClient` interface from `src/social/base.ts`. All `post()` methods check `ADARIA_DRY_RUN`. Social credentials are stored in macOS Keychain under the `social:` config namespace.
+`SocialPublishSkill` generates platform-optimised marketing content via Claude and posts to 6 platforms. Platform clients live in `src/social/` (TypeScript, ported from `~/Github/linkgo/ai-service/src/social/` Python patterns). Each client implements a shared `SocialClient` interface from `src/social/base.ts`. Social credentials are stored in macOS Keychain under the `social:` config namespace. The approval gate in `safety.ts` is the only barrier between Claude's draft and a real platform post — there is no second-line dry-run flag.
 
 ### Fork relationship with pilot-ai
 
@@ -203,17 +203,7 @@ Every meaningful code change must pass through these six stages in order. Do not
 - **Config-driven thresholds.** Numbers and strings that tune behaviour belong in `~/.adaria/config.yaml`, not in code.
 - **SQLite via `better-sqlite3` prepared statements only.** No string interpolation in queries. Multi-table writes go through `db.transaction()`.
 - **Approval-gated writes.** Any skill that wants to publish, update metadata, or reply to a user must route through `safety.ts`.
-- **`ADARIA_DRY_RUN=1` must be respected by every write path.** This flag is set during M7 parallel run; write paths short-circuit and log what they would have done.
 - **Commit messages:** conventional commits, English.
-
-## M7 parallel run runbook (critical to remember)
-
-During M7 (one week), adaria-ai and growth-agent run side-by-side. Two operational rules:
-
-1. **Do not run `claude /login` during this week.** Both daemons share `~/.claude` auth state. Re-auth invalidates both.
-2. **Do not commit to growth-agent during this week** except critical Slack-down fixes. Any improvement should go into adaria-ai directly.
-
-Cutover at M8 has a 1-minute launchctl rollback path (unload adaria-ai plists, reload growth-agent plist). Keep it documented.
 
 ## The senior-code-reviewer agent
 

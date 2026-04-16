@@ -88,16 +88,16 @@ async function checkClaude(cliBinary: string): Promise<Check[]> {
     check(
       "claude CLI authenticated",
       authed,
-      authed
-        ? undefined
-        : "Run 'claude /login' to authenticate. Note: during M7 parallel run, do NOT re-run /login (shared auth with growth-agent).",
+      authed ? undefined : "Run 'claude /login' to authenticate.",
     ),
   ];
 }
 
 /**
  * Warn if ~/.claude auth state was modified within the last 24h.
- * During M7 parallel run, re-authentication invalidates both daemons.
+ * Surfaces accidental re-auth that would invalidate the running daemon's
+ * Claude session — the operator gets a heads-up to expect re-login churn
+ * on the next skill run.
  */
 function checkClaudeAuthRecency(): Check[] {
   const claudeDir = path.join(os.homedir(), ".claude");
@@ -128,7 +128,7 @@ function checkClaudeAuthRecency(): Check[] {
         check(
           "claude auth recency",
           true, // warning, not failure
-          `WARNING: ~/.claude/${newestFile} modified ${String(ago)} min ago. If running M7 parallel, do NOT re-run /login.`,
+          `WARNING: ~/.claude/${newestFile} modified ${String(ago)} min ago. Recent re-auth — expect the next skill run to use a fresh Claude session.`,
         ),
       ];
     }
@@ -206,7 +206,7 @@ export async function runDoctor(): Promise<void> {
   results.push(...claudeChecks);
   for (const c of claudeChecks) printCheck(c);
 
-  // 2b. Claude auth recency (M7 parallel run warning)
+  // 2b. Claude auth recency — flag recent re-auth so operators expect
   const authChecks = checkClaudeAuthRecency();
   results.push(...authChecks);
   for (const c of authChecks) printCheck(c);

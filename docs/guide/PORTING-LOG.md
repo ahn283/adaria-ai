@@ -46,8 +46,9 @@ Living record of surprises and decisions encountered during the growth-agent →
 - **TikTok app review** — The Content Posting API requires app review by TikTok. Feature-flagged until approved.
 - **Keychain namespace isolation** — Production and dev profiles use different keychain service prefixes (`adaria-ai` vs `adaria-ai-dev`) derived from `ADARIA_HOME`.
 
-## M7 — Parity + parallel run
+## M7 — Pre-launch smoke
 
 - **Approval callback wiring** — `core.ts` now registers pending approvals with `ApprovalManager` and stores payloads. On approval, it calls the skill's `executePost()` method via duck-typing (`"executePost" in skill`).
 - **Circuit breaker on skill Claude calls** — Added in `buildSkillContext()`. Trips after 3 consecutive failures, 2-minute reset timeout.
-- **Doctor auth recency** — Checks `~/.claude` modification time and warns if touched within 24h (parallel run safety).
+- **Doctor auth recency** — Checks `~/.claude` modification time and warns if touched within 24h (recent re-auth means the next skill run uses a fresh session).
+- **Parallel-run framing dropped** — Originally M7 was a 1-week side-by-side run with growth-agent under `ADARIA_DRY_RUN=1`. growth-agent was never in active use, so the parallel run + the env-var short-circuit + the `--dry-run` flag and ~15 supporting tests were all removed in M7-cleanup. Approval gate is the only write barrier.

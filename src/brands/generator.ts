@@ -29,7 +29,7 @@ import {
  * Dispatches on service type, sanitises all external text, calls Claude
  * with the shared `brand-generate.md` prompt, validates the JSON response
  * against the portion of the brand schema the model owns, then serialises
- * to `brand.yaml`. `ADARIA_DRY_RUN=1` short-circuits all I/O.
+ * to `brand.yaml`. Caller (BrandSkill) controls cleanup on cancel.
  */
 
 const claudeOutputSchema = z.object({
@@ -98,11 +98,6 @@ export interface BrandGeneratorDeps {
 export interface BrandGenerateResult {
   profile: BrandProfile;
   yamlPath: string;
-  dryRun: boolean;
-}
-
-function isDryRun(): boolean {
-  return process.env["ADARIA_DRY_RUN"] === "1";
 }
 
 async function loadPromptTemplate(dir: string): Promise<string> {
@@ -263,8 +258,9 @@ function buildIdentifiers(req: BrandGenerateRequest): Record<string, string> {
 /**
  * Generate (or regenerate) a brand profile for a service and write it
  * to `$ADARIA_HOME/brands/{serviceId}/brand.yaml`. Returns the profile
- * and the resolved file path. In dry-run mode, returns a synthesized
- * profile with `dryRun: true` and writes nothing.
+ * and the resolved file path. BrandSkill's PREVIEW step is the
+ * user-facing gate before the file becomes authoritative; if the user
+ * cancels, BrandSkill removes the orphan via `cleanupOrphanedYaml`.
  */
 export async function generateBrandProfile(
   req: BrandGenerateRequest,
@@ -272,31 +268,6 @@ export async function generateBrandProfile(
 ): Promise<BrandGenerateResult> {
   const now = deps.now ?? (() => new Date());
   const promptsDir = deps.promptsDir ?? BUNDLED_PROMPTS_DIR;
-
-  if (isDryRun()) {
-    logInfo(
-      `[brand-generate] DRY_RUN: skipping fetch + claude + write for ${req.serviceId}`
-    );
-    const placeholder: BrandProfile = {
-      _meta: {
-        serviceType: req.serviceType,
-        generatedAt: now().toISOString(),
-        sources: [],
-        identifiers: buildIdentifiers(req),
-      },
-      identity: { tagline: "", mission: "", positioning: "", category: "" },
-      voice: { tone: "", personality: "", do: [], dont: [] },
-      audience: { primary: "", painPoints: [], motivations: [] },
-      visual: { primaryColor: "", style: "" },
-      competitors: { differentiation: "" },
-      goals: { currentQuarter: "", keyMetrics: [] },
-    };
-    return {
-      profile: placeholder,
-      yamlPath: path.join(brandsDir(req.serviceId), "brand.yaml"),
-      dryRun: true,
-    };
-  }
 
   let collected: { text: string; sources: string[] };
   switch (req.serviceType) {
@@ -375,5 +346,5 @@ export async function generateBrandProfile(
   await fs.writeFile(yamlPath, yamlText, "utf-8");
   logInfo(`[brand-generate] wrote ${yamlPath}`);
 
-  return { profile, yamlPath, dryRun: false };
+  return { profile, yamlPath };
 }

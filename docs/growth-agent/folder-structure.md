@@ -279,8 +279,8 @@ on any macOS box.
                         # this dir only keeps generation metadata
 ```
 
-Override root via `ADARIA_HOME` env var (used by tests and for running
-two instances side-by-side during M7 parallel run).
+Override root via `ADARIA_HOME` env var (used by tests and the dev
+profile, e.g. `ADARIA_HOME=~/.adaria-dev adaria-ai init`).
 
 **Install flow on a fresh Mac:**
 ```bash

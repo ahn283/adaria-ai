@@ -764,16 +764,6 @@ export class AgentCore {
       return;
     }
 
-    // Defense-in-depth: block all write actions during M7 parallel run.
-    // Individual platform clients also check isDryRun(), but future skills
-    // (blog_publish, metadata_change) may not — gate it here.
-    if (process.env["ADARIA_DRY_RUN"] === "1") {
-      logInfo(
-        `[dry-run] Skipping approval execution for ${taskId} (agent=${entry.agent})`,
-      );
-      return;
-    }
-
     // Dispatch to the appropriate skill's execution handler.
     const skill = this.skillRegistry
       .getSkills()

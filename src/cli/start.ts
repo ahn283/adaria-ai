@@ -48,18 +48,7 @@ function getDaemonEntryScriptPath(): string {
   return path.resolve(path.dirname(thisFile), "..", "index.js");
 }
 
-/** Exposed for unit tests — production callers go through `runStart`. */
-export async function renderPlistForTest(
-  label: string,
-  options: { dryRun?: boolean } = {},
-): Promise<string> {
-  return renderPlist(label, options);
-}
-
-async function renderPlist(
-  label: string = DAEMON_LABEL,
-  options: { dryRun?: boolean } = {},
-): Promise<string> {
+async function renderPlist(label: string = DAEMON_LABEL): Promise<string> {
   const templatePath = path.join(
     BUNDLED_LAUNCHD_DIR,
     `${label}.plist.template`,
@@ -73,26 +62,12 @@ async function renderPlist(
     "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:" +
     path.join(process.env["HOME"] ?? "", ".local", "bin");
 
-  let rendered = template
+  return template
     .replaceAll("__NODE_BIN__", process.execPath)
     .replaceAll("__SCRIPT_PATH__", getDaemonEntryScriptPath())
     .replaceAll("__ADARIA_HOME__", ADARIA_HOME)
     .replaceAll("__LOG_DIR__", LOGS_DIR)
     .replaceAll("__PATH__", pathValue);
-
-  // M7 parallel-run support: inject ADARIA_DRY_RUN=1 into the existing
-  // EnvironmentVariables block so every spawned process — daemon,
-  // weekly orchestrator, monitor — short-circuits write paths. The
-  // template's `<key>ADARIA_HOME</key>` line is the stable anchor.
-  if (options.dryRun) {
-    const anchor = "<key>ADARIA_HOME</key>";
-    const injection =
-      "<key>ADARIA_DRY_RUN</key>\n        <string>1</string>\n        " +
-      anchor;
-    rendered = rendered.replace(anchor, injection);
-  }
-
-  return rendered;
 }
 
 export async function isLabelLoaded(label: string): Promise<boolean> {
@@ -108,32 +83,19 @@ export async function isDaemonLoaded(): Promise<boolean> {
   return isLabelLoaded(DAEMON_LABEL);
 }
 
-async function loadLabel(
-  label: string,
-  options: { dryRun?: boolean } = {},
-): Promise<boolean> {
-  // Always re-render and re-load so option changes (--dry-run on/off)
-  // take effect. Otherwise an already-loaded plist would silently keep
-  // its previous EnvironmentVariables, which is the exact M7 footgun
-  // we're trying to avoid.
-  const wasLoaded = await isLabelLoaded(label);
-  if (wasLoaded) {
-    try {
-      await execFileAsync("launchctl", ["unload", getPlistPath(label)]);
-    } catch {
-      // Plist may have been edited externally — proceed to overwrite.
-    }
+async function loadLabel(label: string): Promise<boolean> {
+  if (await isLabelLoaded(label)) {
+    console.log(`  ${label}: already loaded (skipped)`);
+    return true;
   }
 
-  const plistContent = await renderPlist(label, options);
+  const plistContent = await renderPlist(label);
   const plistPath = getPlistPath(label);
   await fs.writeFile(plistPath, plistContent, { mode: 0o644 });
 
   try {
     await execFileAsync("launchctl", ["load", plistPath]);
-    console.log(
-      `  ${label}: ${wasLoaded ? "reloaded" : "loaded"}${options.dryRun ? " (DRY_RUN)" : ""}`,
-    );
+    console.log(`  ${label}: loaded`);
     return true;
   } catch (err) {
     console.error(
@@ -143,12 +105,7 @@ async function loadLabel(
   }
 }
 
-export interface RunStartOptions {
-  /** Inject `ADARIA_DRY_RUN=1` into all 3 plists. */
-  dryRun?: boolean;
-}
-
-export async function runStart(options: RunStartOptions = {}): Promise<void> {
+export async function runStart(): Promise<void> {
   if (!(await configExists())) {
     console.error(
       'No configuration found. Run "adaria-ai init" first to create ~/.adaria/config.yaml.',
@@ -160,25 +117,16 @@ export async function runStart(options: RunStartOptions = {}): Promise<void> {
   await fs.mkdir(LOGS_DIR, { recursive: true, mode: 0o700 });
   await fs.mkdir(LAUNCH_AGENTS_DIR, { recursive: true });
 
-  console.log(
-    options.dryRun
-      ? "Loading adaria-ai launchd agents (ADARIA_DRY_RUN=1)..."
-      : "Loading adaria-ai launchd agents...",
-  );
+  console.log("Loading adaria-ai launchd agents...");
 
   let allOk = true;
   for (const label of ALL_LABELS) {
-    const ok = await loadLabel(label, options);
+    const ok = await loadLabel(label);
     if (!ok) allOk = false;
   }
 
   if (allOk) {
     console.log(`\nAll 3 agents loaded. Logs: ${LOGS_DIR}/`);
-    if (options.dryRun) {
-      console.log(
-        "Dry-run mode active — write paths short-circuit, no Slack posts to channels (DM briefingChannel only).",
-      );
-    }
   } else {
     console.error("\nSome agents failed to load. Check errors above.");
     process.exitCode = 1;

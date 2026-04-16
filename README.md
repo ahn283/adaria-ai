@@ -130,7 +130,6 @@ Run a separate dev instance alongside production:
 # Dev profile uses ~/.adaria-dev with isolated keychain namespace
 npm run init:dev
 npm run smoke:collectors:dev
-npm run smoke:social:dev
 ```
 
 ## Skills Reference

@@ -211,13 +211,6 @@ export class SeoBlogSkill implements Skill, ExecutableSkill {
       return posts.map((p) => ({ slug: p.slug, status: "skipped" }));
     }
 
-    if (process.env["ADARIA_DRY_RUN"] === "1") {
-      for (const post of posts) {
-        logInfo(`[seo-blog] DRY_RUN: would publish "${post.slug}"`);
-      }
-      return posts.map((p) => ({ slug: p.slug, status: "dry-run" }));
-    }
-
     const published: Array<{ slug: string; status: string }> = [];
     for (const post of posts) {
       try {

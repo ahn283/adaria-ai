@@ -292,12 +292,6 @@ fridgify:
     linkedin: true
 ```
 
-#### `ADARIA_DRY_RUN=1` behaviour
-
-All platform clients check `ADARIA_DRY_RUN`. When set, they log the
-full request payload that would be sent but do not call the API. This is
-essential for M7 parallel run safety.
-
 Each gate:
 1. Skill produces a draft + context (what, why, risk)
 2. Slack message with Block Kit approve / reject buttons
@@ -434,7 +428,7 @@ for the file-by-file provenance.
 
 - A second Mac (not the dev box) reaches `adaria-ai status` showing all
   three launchd jobs loaded, using only public install flow
-- M7 parallel Sunday briefing diff is "explainable" (no unknown delta)
+- M7 pre-launch smoke (doctor green, brand E2E, one approval loop) passes
 - Monday post-M8 briefing is delivered from adaria-ai without manual fixup
 - `adaria-ai doctor` reports all green on the second Mac
 
@@ -462,18 +456,13 @@ impact, and mitigation. Top five by concern:
 
 1. **pilot-ai `core.ts` trim is harder than expected** — fallback is write
    from scratch using pilot-ai as reference
-2. **M7 parallel run doubles external API load** — mitigated by
-   `ADARIA_DRY_RUN=1` mode during parallel week
-3. **Shared `~/.claude` auth between two daemons** — documented runbook:
-   no `/login` during parallel week
-4. **Mode B MCP tool leaks raw review text / PII to Slack** — tool
+2. **Mode B MCP tool leaks raw review text / PII to Slack** — tool
    descriptions forbid pass-through, truncate by default, prompt-guard test
-5. **npm path resolution breaks when globally installed** — mandatory M9
+3. **npm path resolution breaks when globally installed** — mandatory M9
    smoke test on a second Mac
-6. **Social platform API rate limits / token expiry during weekly run** —
-   per-platform rate limiter + token refresh in each client; `DRY_RUN`
-   mode skips API calls entirely
-7. **TikTok Content Posting API requires app review** — may delay TikTok
+4. **Social platform API rate limits / token expiry during weekly run** —
+   per-platform rate limiter + token refresh in each client
+5. **TikTok Content Posting API requires app review** — may delay TikTok
    support; other 5 platforms are unblocked
 
 ## 12. Out of scope (revisited for Phase 2+)
@@ -500,8 +489,8 @@ impact, and mitigation. Top five by concern:
 | 2 | Name: `adaria-ai` | initial |
 | 3 | TypeScript | 2026-04-12 |
 | 4 | Cron via separate launchd jobs, not in-process scheduler | 2026-04-12 |
-| 5 | growth-agent Phase 1 commit + freeze as dogfood | 2026-04-12 |
-| 6 | Migration: parallel run (M7, `ADARIA_DRY_RUN=1`) → cutover (M8) | 2026-04-12 |
+| 5 | growth-agent not in active use; adaria-ai goes live directly (revised 2026-04-16) | 2026-04-16 |
+| 6 | Migration: M7 pre-launch smoke (DM only) → M8 production briefingChannel switch. No `ADARIA_DRY_RUN` flag — approval gate is the only write barrier (revised 2026-04-16) | 2026-04-16 |
 | 7 | Distribution: npm unscoped `adaria-ai` public | 2026-04-12 |
 | 8 | MCP framework kept, 4 marketing read-only tools added | 2026-04-12 |
 | 9 | One-time fork from pilot-ai, no upstream-sync routine | 2026-04-12 |
