@@ -563,7 +563,7 @@ production Slack channel.
 | M6 Orchestrators | 1.0 | 🟨 | 2026-04-12 | — (code + Block Kit briefing + tests landed; pending manual verify: Slack briefing + launchctl) |
 | M6.5 Social publishing | 3.0 | 🟨 | 2026-04-12 | — (6 clients + skill + smoke script + all tests landed; manual platform verify pending) |
 | M6.7 Brand profile | 2.0 | 🟨 | 2026-04-15 | — (all 6 phases landed; manual Slack flow E2E folded into M7 pre-launch smoke) |
-| M7 Pre-launch smoke | 0.5 | 🟨 | 2026-04-12 | — (code + docs complete; manual smoke run pending) |
+| M7 Pre-launch smoke | 0.5 | 🟨 | 2026-04-12 | — (code + docs complete: M7-cleanup commit `6856c63` removed parallel-run framing + DRY_RUN code, added 11 social fetch-mock tests; manual smoke run pending) |
 | M8 Go live | 0.5 | ⬜ | — | — |
 | M9 npm publish | 0.5 | ⬜ | — | — |
 | **Total** | **~15** | | | |
